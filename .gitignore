@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.dev.vars
+.wrangler/
+__pycache__/
+*.py[cod]

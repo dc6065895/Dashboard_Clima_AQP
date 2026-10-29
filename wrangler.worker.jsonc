@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "clima-sur-alertas",
+  "main": "./src/worker.js",
+  "compatibility_date": "2026-10-28",
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "clima-sur-alerts",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "META_GRAPH_API_VERSION": "REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION",
+    "WHATSAPP_TEMPLATE_NAME": "REPLACE_WITH_APPROVED_TEMPLATE_NAME",
+    "WHATSAPP_TEMPLATE_LANGUAGE": "es_PE"
+  }
+}

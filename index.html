@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101816" />
+    <meta
+      name="description"
+      content="Panel de monitoreo meteorológico en tiempo real para Arequipa, Perú."
+    />
+    <title>Clima Sur · Monitor meteorológico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css?v=3" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#" aria-label="Clima Sur, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M16 3v5m0 16v5M3 16h5m16 0h5M6.8 6.8l3.5 3.5m11.4 11.4 3.5 3.5m0-18.4-3.5 3.5m-11.4 11.4-3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+              <circle cx="16" cy="16" r="6" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M16 12.5v7m-2-2 2 2 2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="brand-copy"><strong>clima<span>sur</span></strong><small>OBSERVATORIO LOCAL</small></span>
+        </a>
+
+        <div class="sidebar-label">MONITOREO</div>
+        <nav class="main-nav" aria-label="Navegación principal">
+          <a class="nav-item active" href="#resumen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>
+            Resumen
+          </a>
+          <a class="nav-item" href="#mapa">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15m6-12v15"/></svg>
+            Radar de lluvia
+            <span class="nav-live"><i></i> EN VIVO</span>
+          </a>
+          <a class="nav-item" href="#satellite">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M20.2 15a9 9 0 0 0-11.2-11M3.8 9a9 9 0 0 0 11.2 11M8 8l-4.5-.5L4 12m12 4 4.5.5L20 12"/></svg>
+            Satélite GOES
+          </a>
+          <a class="nav-item" href="#pronostico">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg>
+            Pronóstico
+          </a>
+        </nav>
+
+        <div class="sidebar-label locations-label">ESTACIONES</div>
+        <div class="station-list" role="group" aria-label="Seleccionar ubicación">
+          <button class="station active" data-location="cerro-colorado">
+            <span class="station-dot"></span><span><strong>Cerro Colorado</strong><small>Arequipa · 2,399 m</small></span><span class="station-arrow">›</span>
+          </button>
+          <button class="station" data-location="periferia">
+            <span class="station-dot"></span><span><strong>Arequipa periferia</strong><small>Alta montaña · 3,400 m</small></span><span class="station-arrow">›</span>
+          </button>
+          <button class="station" data-location="yanahuara">
+            <span class="station-dot"></span><span><strong>Yanahuara</strong><small>Arequipa · 2,390 m</small></span><span class="station-arrow">›</span>
+          </button>
+          <button class="station" data-location="cayma">
+            <span class="station-dot"></span><span><strong>Cayma</strong><small>Arequipa · 2,450 m</small></span><span class="station-arrow">›</span>
+          </button>
+        </div>
+
+        <div class="sidebar-bottom">
+          <div class="source-card">
+            <div class="source-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m0-18c-4 3-4 7 0 9m0-9c4 3 4 7 0 9M5 7l14 10M19 7 5 17"/><circle cx="12" cy="12" r="9"/></svg></div>
+            <div><strong>Red de datos activa</strong><span>Modelos globales + radar</span></div>
+            <span class="source-pulse"></span>
+          </div>
+          <div class="sidebar-footer"><span>AREQUIPA, PERÚ</span><span>v1.0.0</span></div>
+        </div>
+      </aside>
+
+      <main class="main-content" id="resumen">
+        <header class="topbar">
+          <div class="breadcrumb"><span>Observatorio</span><span class="crumb-sep">/</span><strong id="breadcrumb-location">Cerro Colorado</strong></div>
+          <div class="topbar-right">
+            <div class="live-clock"><span class="live-indicator"></span><span>MONITOREO ACTIVO</span><span class="clock-sep"></span><time id="local-clock">--:--:--</time></div>
+            <button class="icon-button" id="refresh-button" aria-label="Actualizar datos" title="Actualizar ahora">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.4-3"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <section class="page-heading">
+          <div>
+            <div class="eyebrow"><span class="eyebrow-line"></span> LUNES, 26 DE OCTUBRE · 2026</div>
+            <h1>Estado del <span>tiempo</span></h1>
+            <p class="location-subtitle" id="location-subtitle">Cerro Colorado, Arequipa, Arequipa <span>·</span> 2,428 m s. n. m.</p>
+          </div>
+          <div class="update-box"><span class="update-icon">↻</span><span>PRÓXIMA ACTUALIZACIÓN<strong id="next-update">en 15 min</strong></span></div>
+        </section>
+
+        <section class="senamhi-panel" aria-labelledby="senamhi-title">
+          <div class="senamhi-heading">
+            <span class="senamhi-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.4 3.2 7.4 7.5 9.5 4.3-2.1 7.5-5.1 7.5-9.5V6L12 3Z"/><path d="M12 7v5m0 3h.01"/></svg></span>
+            <div class="senamhi-title-wrap">
+              <div class="eyebrow"><span class="eyebrow-line"></span> FUENTE OFICIAL · SENAMHI</div>
+              <h2 id="senamhi-title">Avisos vigentes <span>para Arequipa</span></h2>
+              <span class="senamhi-note">Avisos meteorológicos publicados por SENAMHI para el departamento.</span>
+            </div>
+            <a class="senamhi-source-link" href="https://www.senamhi.gob.pe/?p=aviso-meteorologico&amp;dp=arequipa" target="_blank" rel="noreferrer">ABRIR SENAMHI <span>↗</span></a>
+          </div>
+          <div id="senamhi-status" class="senamhi-status" role="status" aria-live="polite"><span class="status-dot"></span> Consultando avisos oficiales…</div>
+          <div id="senamhi-list" class="senamhi-list" aria-live="polite"></div>
+        </section>
+
+        <section class="weather-overview" aria-label="Condiciones actuales">
+          <article class="current-card panel">
+            <div class="current-top"><span class="section-kicker">CONDICIONES ACTUALES</span><span class="weather-symbol" id="current-icon" aria-hidden="true">☀</span></div>
+            <div class="current-main">
+              <div class="temperature"><span id="current-temp">--</span><sup>°</sup></div>
+              <div class="current-description"><strong id="current-description">Cargando datos...</strong><span>Sensación térmica <b id="feels-like">--°</b></span></div>
+            </div>
+            <div class="current-meta">
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5S5 11 5 15a7 7 0 0 0 14 0c0-4-7-11.5-7-11.5Z"/></svg><span>HUMEDAD</span><b id="current-humidity">--%</b></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18m0-18c-4 3-4 7 0 9m0-9c4 3 4 7 0 9M5 7l14 10M19 7 5 17"/></svg><span>VIENTO</span><b id="current-wind">-- km/h</b></span>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15a8 8 0 0 1 16 0M12 15l4-5"/><path d="M3 19h18"/></svg><span>RÁFAGAS</span><b id="current-gusts">-- km/h</b></span>
+            </div>
+          </article>
+
+          <article class="metric-card panel">
+            <div class="metric-heading"><span class="metric-icon solar-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg></span><span class="section-kicker">RADIACIÓN SOLAR</span></div>
+            <div class="metric-value"><span id="solar-value">--</span><small>W/m²</small></div>
+            <div class="meter"><span id="solar-meter" class="meter-fill solar-fill"></span></div>
+            <div class="metric-foot"><span>Radiación de onda corta</span><span id="solar-status">--</span></div>
+          </article>
+
+          <article class="metric-card panel">
+            <div class="metric-heading"><span class="metric-icon rain-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17.5a4.5 4.5 0 1 1 .9-8.9A5.5 5.5 0 0 1 18.5 10a3.8 3.8 0 0 1-.3 7.5M9 20l-.5 1.5M14 20l-.5 1.5"/></svg></span><span class="section-kicker">PROB. DE LLUVIA</span></div>
+            <div class="metric-value"><span id="rain-chance">--</span><small>%</small></div>
+            <div class="meter"><span id="rain-meter" class="meter-fill rain-fill"></span></div>
+            <div class="metric-foot"><span>Próxima hora</span><span id="rain-status">--</span></div>
+          </article>
+
+          <article class="metric-card panel">
+            <div class="metric-heading"><span class="metric-icon drops-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5S5 11 5 15a7 7 0 0 0 14 0c0-4-7-11.5-7-11.5Z"/><path d="M9 15h6"/></svg></span><span class="section-kicker">LLUVIA ESTIMADA</span></div>
+            <div class="metric-value"><span id="rain-amount">--</span><small class="unit-mm">mm</small></div>
+            <div class="rain-note"><span class="rain-note-dot"></span> Acumulado en la próxima hora</div>
+            <div class="metric-foot rain-foot"><span>Precipitación</span><span id="precip-status">--</span></div>
+          </article>
+
+          <article class="metric-card panel">
+            <div class="metric-heading"><span class="metric-icon pressure-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 12l4-4m-12 9h16"/></svg></span><span class="section-kicker">PRESIÓN</span></div>
+            <div class="metric-value"><span id="pressure-value">--</span><small>hPa</small></div>
+            <div class="meter"><span id="pressure-meter" class="meter-fill pressure-fill"></span></div>
+            <div class="metric-foot"><span>Presión en superficie</span><span id="pressure-status">--</span></div>
+          </article>
+        </section>
+
+        <section class="forecast-section" id="pronostico">
+          <div class="section-heading">
+            <div><div class="eyebrow"><span class="eyebrow-line"></span> PRÓXIMAS HORAS</div><h2>Pronóstico <span>por hora</span></h2></div>
+            <div class="forecast-legend"><span><i class="legend-temp"></i>Temperatura</span><span><i class="legend-rain"></i>Prob. lluvia</span></div>
+          </div>
+          <div class="hourly-grid" id="hourly-forecast" aria-live="polite">
+            <div class="hour-card"><span class="hour-time">+1 H</span><span class="hour-icon">☀</span><strong>--°</strong><div class="hour-rain"><i></i> --%</div></div>
+            <div class="hour-card"><span class="hour-time">+3 H</span><span class="hour-icon">☀</span><strong>--°</strong><div class="hour-rain"><i></i> --%</div></div>
+            <div class="hour-card"><span class="hour-time">+6 H</span><span class="hour-icon">☀</span><strong>--°</strong><div class="hour-rain"><i></i> --%</div></div>
+          </div>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel map-panel media-panel" id="mapa">
+            <div class="panel-heading">
+              <div><div class="eyebrow"><span class="eyebrow-line"></span> PRECIPITACIÓN</div><h2>Radar <span>de lluvia</span></h2></div>
+              <div class="media-controls">
+                <label class="filter-label" for="radar-filter">FILTRO</label>
+                <select class="media-filter" id="radar-filter" aria-label="Filtro del radar">
+                  <option value="standard">Radar suave</option>
+                  <option value="detail">Más detalle</option>
+                  <option value="base">Solo mapa</option>
+                </select>
+                <button class="expand-button" type="button" data-expand="mapa" aria-label="Expandir radar" title="Ampliar radar">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 8l6-5m12 5-6-5M3 16l6 5m12-5-6 5"/></svg>
+                  <span class="expand-label">AMPLIAR</span>
+                </button>
+              </div>
+            </div>
+            <div class="map-frame"><div id="rain-map" aria-label="Mapa de radar de lluvia para Arequipa"></div><div class="map-location-pill"><i></i><span id="map-location-name">CERRO COLORADO</span></div><div class="map-legend"><span>Intensidad</span><i class="legend-gradient"></i><span>Ligera</span><span>Intensa</span></div></div>
+            <div class="map-caption"><span><i class="caption-dot"></i> Mosaico de radar RainViewer</span><span id="radar-timestamp">Actualizando radar…</span></div>
+          </article>
+
+          <article class="panel satellite-panel media-panel" id="satellite">
+            <div class="panel-heading satellite-heading">
+              <div><div class="eyebrow"><span class="eyebrow-line"></span> GOES-19 · SUDAMÉRICA NORTE</div><h2>Imagen satelital <span id="satellite-product-title">GeoColor</span></h2></div>
+              <div class="media-controls">
+                <label class="filter-label" for="satellite-filter">FILTRO</label>
+                <select class="media-filter" id="satellite-filter" aria-label="Filtro de imagen satelital">
+                  <option value="geocolor">GeoColor</option>
+                  <option value="infrared">Infrarrojo · banda 13</option>
+                  <option value="airmass">AirMass</option>
+                  <option value="sandwich">Sandwich</option>
+                </select>
+                <button class="expand-button" type="button" data-expand="satellite" aria-label="Expandir imagen satelital" title="Ampliar imagen">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 8l6-5m12 5-6-5M3 16l6 5m12-5-6 5"/></svg>
+                  <span class="expand-label">Ampliar</span>
+                </button>
+              </div>
+            </div>
+            <div class="satellite-image" role="img" aria-label="Imagen satelital GeoColor del satélite geoestacionario GOES, centrada en Sudamérica">
+              <div class="satellite-crosshair"><span></span><i></i><b id="satellite-location">AREQUIPA</b></div>
+              <div class="satellite-overlay"><span class="sat-live"><i></i> SATÉLITE</span><span id="satellite-product-overlay">GOES-19 · GEOCOLOR</span></div>
+              <div class="satellite-coordinates" id="satellite-coordinates">16°24′S 71°32′W</div>
+              <div class="satellite-zoom-controls" role="group" aria-label="Controles de zoom de la imagen satelital">
+                <button type="button" id="satellite-zoom-out" aria-label="Alejar imagen" title="Alejar">−</button>
+                <button type="button" id="satellite-zoom-reset" aria-label="Restablecer zoom" title="Restablecer zoom"><span id="satellite-zoom-level">1.0×</span></button>
+                <button type="button" id="satellite-zoom-in" aria-label="Acercar imagen" title="Acercar">+</button>
+              </div>
+            </div>
+            <div class="satellite-footer"><span><i class="satellite-dot"></i> NOAA STAR · GOES-19 · NSA</span><a href="https://www.star.nesdis.noaa.gov/GOES/" target="_blank" rel="noreferrer">VER IMAGEN <span>↗</span></a></div>
+          </article>
+        </section>
+
+        <section class="panel daily-panel">
+          <div class="panel-heading daily-heading">
+            <div><div class="eyebrow"><span class="eyebrow-line"></span> TENDENCIA EXTENDIDA</div><h2>Próximos <span>3 días</span></h2></div>
+            <span class="daily-unit">TEMPERATURA °C <i></i> LLUVIA mm</span>
+          </div>
+          <div class="daily-list" id="daily-forecast" aria-live="polite">
+            <div class="daily-row"><strong>Hoy</strong><span class="daily-weather-icon">☀</span><span class="daily-condition">Cargando…</span><div class="daily-rain"><i></i><span>--%</span></div><span class="daily-range">--° <b>—</b> --°</span><div class="daily-bar"><i></i></div><span class="daily-mm">-- mm</span></div>
+            <div class="daily-row"><strong>Mañana</strong><span class="daily-weather-icon">☀</span><span class="daily-condition">—</span><div class="daily-rain"><i></i><span>--%</span></div><span class="daily-range">--° <b>—</b> --°</span><div class="daily-bar"><i></i></div><span class="daily-mm">-- mm</span></div>
+            <div class="daily-row"><strong>Miércoles</strong><span class="daily-weather-icon">☀</span><span class="daily-condition">—</span><div class="daily-rain"><i></i><span>--%</span></div><span class="daily-range">--° <b>—</b> --°</span><div class="daily-bar"><i></i></div><span class="daily-mm">-- mm</span></div>
+          </div>
+        </section>
+
+        <section class="alerts-row" aria-label="Alertas meteorológicas">
+          <div class="alerts-title"><span class="alert-bell"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4"/></svg></span><span><strong>Alertas meteorológicas</strong><small>Condiciones destacadas del área</small></span></div>
+          <div class="alert-content" id="alert-content"><span class="alert-ok-icon">✓</span><span>Analizando condiciones locales…</span></div>
+          <span class="alert-disclaimer">Orientativas · no oficiales</span>
+        </section>
+
+        <footer class="page-footer"><span>CLIMASUR <i>·</i> DATOS METEOROLÓGICOS PARA AREQUIPA</span><span>FUENTES: OPEN-METEO <i>·</i> RAINVIEWER <i>·</i> NOAA</span></footer>
+      </main>
+    </div>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="app.js?v=9"></script>
+  </body>
+</html>
