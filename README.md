@@ -38,27 +38,30 @@ No escribas el token en el código ni lo compartas en el chat. Wrangler lo almac
 
 ### 2. Crear la plantilla de Meta
 
-Crea y aprueba una plantilla con cinco variables en el cuerpo, en este orden:
+Crea y aprueba una plantilla llamada `clima_sur_alerta`, en español (`es_PE`), con cinco variables en el cuerpo, en este orden:
 
 ```text
 Aviso SENAMHI {{1}} para Arequipa: {{2}}. Nivel {{3}}. Vigencia: {{4}}. Fuente: {{5}}
 ```
 
-Configura en `wrangler.worker.jsonc` el nombre exacto aprobado, el idioma que muestra Meta para la plantilla y la versión Graph API habilitada en tu aplicación. Meta determina la categoría de la plantilla; no supongas que un aviso meteorológico califica como una categoría específica.
+Configura en `wrangler.worker.jsonc` el nombre exacto aprobado y una versión vigente de Graph API habilitada para tu aplicación. Meta determina la categoría de la plantilla; no supongas que un aviso meteorológico califica como una categoría específica.
 
 ### 3. Publicar la web en Pages
 
-Desde la carpeta del proyecto, genera los archivos estáticos y crea el proyecto Pages:
+Si conectas Pages al repositorio Git (recomendado para esta configuración), establece la raíz del proyecto como `/`, la rama de producción como `main`, el comando de compilación como:
 
 ```bash
 python3 scripts/build_pages.py
+```
+
+El directorio de salida es `dist`. Pages detecta la función en `functions/` para mantener disponible `/api/senamhi/alerts`. Para conectar GitHub: Cloudflare Dashboard → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git** → autoriza GitHub Pages sobre el repositorio `Dashboard_Clima_AQP` → **Begin setup**. No elijas Direct Upload, ya que el tipo de proyecto Pages no se puede cambiar después.
+
+Como alternativa, se puede usar Direct Upload, pero requiere crear otro proyecto Pages si primero se elige integración Git. Para ese método, genera `dist` y ejecuta:
+
+```bash
 npx wrangler pages project create clima-sur
 npx wrangler pages deploy dist --project-name=clima-sur --config=wrangler.pages.jsonc
 ```
-
-Pages detecta la función en `functions/`. Para conectar un repositorio Git, configura como comando de compilación `python3 scripts/build_pages.py` y como directorio de salida `dist`.
-
-Al conectar el proyecto Pages al repositorio Git, establece la carpeta raíz del proyecto, el comando de compilación `python3 scripts/build_pages.py` y el directorio de salida `dist`. Cloudflare detectará la función de Pages en `functions/` para mantener disponible `/api/senamhi/alerts`.
 
 ### 4. Configurar y publicar el Worker programado
 
