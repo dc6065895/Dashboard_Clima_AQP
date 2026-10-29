@@ -84,7 +84,7 @@ npx wrangler secret put WHATSAPP_PHONE_NUMBER_ID --config=wrangler.worker.jsonc
 npx wrangler secret put WHATSAPP_RECIPIENT --config=wrangler.worker.jsonc
 ```
 
-Antes de activar los envíos, reemplaza el valor `REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION` y confirma que el nombre de plantilla coincide exactamente con la plantilla aprobada. Cambia `WHATSAPP_ENABLED` a `"true"` en `wrangler.worker.jsonc` y vuelve a desplegar. El destinatario debe estar en formato internacional, por ejemplo `+51...`, y haber dado el consentimiento requerido. Comprueba [el estado del Worker](https://clima-sur-alertas.dc6065895.workers.dev/health); sus indicadores deben mostrar la base, WhatsApp habilitado, los secretos, la plantilla y la versión Graph configurados. Al primer ciclo programado tras activar WhatsApp se enviarán los avisos regionales vigentes; luego solo avisos nuevos o con cambios. Los fallos del proveedor se registran y se reintentan en un ciclo posterior.
+La configuración usa Graph API `v26.0`, la versión más reciente publicada por Meta al 29 de octubre de 2026. Confirma que el nombre e idioma de plantilla (`clima_sur_alerta`, `es_PE`) coinciden exactamente con la aprobada en tu cuenta. Mantén `WHATSAPP_ENABLED` en `"false"` mientras guardas los secretos; luego comprueba [el estado del Worker](https://clima-sur-alertas.dc6065895.workers.dev/health) y, solo si base, versión, plantilla y secretos aparecen configurados y el destinatario dio su consentimiento, cambia `WHATSAPP_ENABLED` a `"true"` y vuelve a desplegar. Al primer ciclo programado tras activar WhatsApp se enviarán los avisos regionales vigentes; luego solo avisos nuevos o con cambios. Los fallos del proveedor se registran y se reintentan en un ciclo posterior.
 
 ### Limitaciones y costos
 
