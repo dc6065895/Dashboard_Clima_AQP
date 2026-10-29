@@ -99,6 +99,13 @@ async function claimAlert(database, alert, key, now) {
 }
 
 async function checkAndNotify(env) {
+  if (env.WHATSAPP_ENABLED !== "true") {
+    console.warn(
+      "WhatsApp alerts are disabled. Complete the Meta setup, then set WHATSAPP_ENABLED to true.",
+    );
+    return;
+  }
+
   const missing = REQUIRED_SECRETS.filter((name) => !env[name]);
   if (missing.length) {
     throw new Error(`Missing Worker secrets: ${missing.join(", ")}`);
@@ -153,6 +160,7 @@ export default {
       service: "clima-sur-alerts",
       configured: {
         database: Boolean(env.DB),
+        whatsappEnabled: env.WHATSAPP_ENABLED === "true",
         whatsapp: REQUIRED_SECRETS.every((name) => Boolean(env[name])),
         template: isConfigured(env.WHATSAPP_TEMPLATE_NAME),
         graphApiVersion:

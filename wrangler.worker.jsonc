@@ -15,6 +15,7 @@
     }
   ],
   "vars": {
+    "WHATSAPP_ENABLED": "false",
     "META_GRAPH_API_VERSION": "REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION",
     "WHATSAPP_TEMPLATE_NAME": "clima_sur_alerta",
     "WHATSAPP_TEMPLATE_LANGUAGE": "es_PE"

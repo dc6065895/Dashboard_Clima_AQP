@@ -48,15 +48,13 @@ Configura en `wrangler.worker.jsonc` el nombre exacto aprobado y una versión vi
 
 ### 3. Publicar la web en Pages
 
-Si conectas Pages al repositorio Git (recomendado para esta configuración), establece la raíz del proyecto como `/`, la rama de producción como `main`, el comando de compilación como:
+El proyecto `clima-sur` ya está conectado al repositorio GitHub `dc6065895/Dashboard_Clima_AQP`, con la rama `main` como producción y la raíz del repositorio como directorio del proyecto. Cada push a `main` inicia una compilación y publicación automática en [https://clima-sur.pages.dev](https://clima-sur.pages.dev). La configuración de compilación es:
 
 ```bash
 python3 scripts/build_pages.py
 ```
 
-El directorio de salida es `dist`. Pages detecta la función en `functions/` para mantener disponible `/api/senamhi/alerts`. Para conectar GitHub: Cloudflare Dashboard → **Workers & Pages** → **Create application** → **Pages** → **Connect to Git** → autoriza GitHub Pages sobre el repositorio `Dashboard_Clima_AQP` → **Begin setup**. No elijas Direct Upload, ya que el tipo de proyecto Pages no se puede cambiar después.
-
-Como alternativa, se puede usar Direct Upload, pero requiere crear otro proyecto Pages si primero se elige integración Git. Para ese método, genera `dist` y ejecuta:
+El directorio de salida es `dist`. Pages detecta la función en `functions/` para mantener disponible `/api/senamhi/alerts`. No uses Direct Upload para este proyecto: Pages no permite cambiar después de Direct Upload a integración Git. Para reconstruir el sitio manualmente, genera `dist` y ejecuta:
 
 ```bash
 npx wrangler pages project create clima-sur
@@ -65,23 +63,28 @@ npx wrangler pages deploy dist --project-name=clima-sur --config=wrangler.pages.
 
 ### 4. Configurar y publicar el Worker programado
 
-La base D1 `clima-sur-alerts` ya está creada en la cuenta Cloudflare y su ID está vinculado en `wrangler.worker.jsonc`. La tabla de deduplicación también está creada. Si reconstruyes la cuenta desde cero, crea primero la base con `npx wrangler d1 create clima-sur-alerts` y coloca el ID que devuelve Wrangler en la configuración. Para aplicar migraciones pendientes:
+La base D1 `clima-sur-alerts` y su tabla de deduplicación ya están creadas; el ID está vinculado en `wrangler.worker.jsonc`. Para una cuenta nueva, crea primero la base y actualiza el ID en ese archivo; luego aplica la migración:
 
 ```bash
 npx wrangler d1 create clima-sur-alerts
 npx wrangler d1 migrations apply clima-sur-alerts --remote --config=wrangler.worker.jsonc
 ```
 
-Guarda las credenciales como secretos y publica el Worker:
+El Worker programado `clima-sur-alertas` consulta SENAMHI cada 15 minutos. WhatsApp está desactivado por defecto (`WHATSAPP_ENABLED: "false"`); el Worker puede desplegarse sin credenciales de Meta y no enviará mensajes. No actives los envíos hasta tener el número emisor habilitado, una plantilla aprobada y el consentimiento del destinatario.
+
+```bash
+npx wrangler deploy --config=wrangler.worker.jsonc
+```
+
+Solo después de completar la configuración de Meta, guarda las credenciales como secretos:
 
 ```bash
 npx wrangler secret put WHATSAPP_ACCESS_TOKEN --config=wrangler.worker.jsonc
 npx wrangler secret put WHATSAPP_PHONE_NUMBER_ID --config=wrangler.worker.jsonc
 npx wrangler secret put WHATSAPP_RECIPIENT --config=wrangler.worker.jsonc
-npx wrangler deploy --config=wrangler.worker.jsonc
 ```
 
-El destinatario debe estar en formato internacional, por ejemplo `+51...`, y haber dado el consentimiento requerido. Comprueba `https://clima-sur-alertas.<tu-subdominio>.workers.dev/health`; sus indicadores deben mostrar la base, WhatsApp, plantilla y versión Graph configurados. Al primer ciclo programado se enviarán los avisos regionales que estén vigentes en ese momento; luego solo avisos nuevos o con cambios. Los fallos del proveedor se registran y se reintentan en un ciclo posterior.
+Antes de activar los envíos, reemplaza el valor `REPLACE_WITH_SUPPORTED_GRAPH_API_VERSION` y confirma que el nombre de plantilla coincide exactamente con la plantilla aprobada. Cambia `WHATSAPP_ENABLED` a `"true"` en `wrangler.worker.jsonc` y vuelve a desplegar. El destinatario debe estar en formato internacional, por ejemplo `+51...`, y haber dado el consentimiento requerido. Comprueba [el estado del Worker](https://clima-sur-alertas.dc6065895.workers.dev/health); sus indicadores deben mostrar la base, WhatsApp habilitado, los secretos, la plantilla y la versión Graph configurados. Al primer ciclo programado tras activar WhatsApp se enviarán los avisos regionales vigentes; luego solo avisos nuevos o con cambios. Los fallos del proveedor se registran y se reintentan en un ciclo posterior.
 
 ### Limitaciones y costos
 
