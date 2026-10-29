@@ -10,7 +10,7 @@
     {
       "binding": "DB",
       "database_name": "clima-sur-alerts",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID",
+      "database_id": "a4166d6e-a2ba-46b0-b60c-08ca979cce7f",
       "migrations_dir": "migrations"
     }
   ],

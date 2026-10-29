@@ -65,7 +65,7 @@ npx wrangler pages deploy dist --project-name=clima-sur --config=wrangler.pages.
 
 ### 4. Configurar y publicar el Worker programado
 
-Crea la base D1, reemplaza `REPLACE_WITH_D1_DATABASE_ID` en `wrangler.worker.jsonc` por el ID devuelto, y aplica la migración:
+La base D1 `clima-sur-alerts` ya está creada en la cuenta Cloudflare y su ID está vinculado en `wrangler.worker.jsonc`. La tabla de deduplicación también está creada. Si reconstruyes la cuenta desde cero, crea primero la base con `npx wrangler d1 create clima-sur-alerts` y coloca el ID que devuelve Wrangler en la configuración. Para aplicar migraciones pendientes:
 
 ```bash
 npx wrangler d1 create clima-sur-alerts
