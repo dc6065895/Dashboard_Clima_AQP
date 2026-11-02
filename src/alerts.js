@@ -1,7 +1,41 @@
-export const SENAMHI_URL =
-  "https://www.senamhi.gob.pe/?p=aviso-meteorologico&dp=arequipa";
+export const SENAMHI_BASE_URL = "https://www.senamhi.gob.pe/?p=aviso-meteorologico";
 export const SENAMHI_MAP_URL =
   "https://www.senamhi.gob.pe/mapas/mapa-avisos-meteorologicos/index.php";
+
+export const SENAMHI_DEPARTMENTS = new Set([
+  "amazonas",
+  "ancash",
+  "apurimac",
+  "arequipa",
+  "ayacucho",
+  "cajamarca",
+  "callao",
+  "cusco",
+  "huancavelica",
+  "huanuco",
+  "ica",
+  "junin",
+  "la-libertad",
+  "lambayeque",
+  "lima",
+  "loreto",
+  "madre-de-dios",
+  "moquegua",
+  "pasco",
+  "piura",
+  "puno",
+  "san-martin",
+  "tacna",
+  "tumbes",
+  "ucayali",
+]);
+
+export function getSenamhiUrl(department = "arequipa") {
+  if (!SENAMHI_DEPARTMENTS.has(department)) {
+    throw new Error(`Unsupported SENAMHI department: ${department}`);
+  }
+  return `${SENAMHI_BASE_URL}&dp=${department}`;
+}
 
 function decodeEntities(value) {
   return value
@@ -41,11 +75,9 @@ export function parseAffectedDepartments(html) {
     throw new Error("SENAMHI map has no affected-departments list");
   }
   const paragraph = normalized.slice(paragraphStart, paragraphEnd);
-  const departments = [...paragraph.matchAll(/<a\b[^>]*>/gi)]
+  return [...paragraph.matchAll(/<a\b[^>]*>/gi)]
     .map((match) => attributesFromTag(match[0]).id?.toLowerCase())
     .filter(Boolean);
-  if (!departments.length) throw new Error("SENAMHI map has no department entries");
-  return departments;
 }
 
 export function parseSENAMHIBulletins(html) {
@@ -75,7 +107,7 @@ export function parseSENAMHIBulletins(html) {
         severity: severity.toUpperCase(),
         start_date: dates.at(-2),
         end_date: dates.at(-1),
-        url: new URL(link, SENAMHI_URL).href,
+        url: new URL(link, "https://www.senamhi.gob.pe/").href,
       },
     ];
   });
@@ -93,17 +125,21 @@ function limaDate(date) {
 }
 
 async function fetchText(url) {
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    headers: { "User-Agent": "ClimaSur/1.0 (public weather dashboard)" },
+  });
   if (!response.ok) throw new Error(`SENAMHI responded HTTP ${response.status}`);
   return response.text();
 }
 
-export async function fetchActiveAlerts(now = new Date()) {
-  const bulletins = parseSENAMHIBulletins(await fetchText(SENAMHI_URL));
+export async function fetchActiveAlerts(department = "arequipa", now = new Date()) {
+  const sourceUrl = getSenamhiUrl(department);
+  const bulletins = parseSENAMHIBulletins(await fetchText(sourceUrl));
   const today = limaDate(now);
   const alerts = [];
+  const warnings = [];
   for (const bulletin of bulletins) {
-    if (bulletin.end_date < today) continue;
+    if (bulletin.start_date > today || bulletin.end_date < today) continue;
     const mapUrl = new URL(SENAMHI_MAP_URL);
     mapUrl.search = new URLSearchParams({
       av: bulletin.number,
@@ -111,8 +147,21 @@ export async function fetchActiveAlerts(now = new Date()) {
       mp: "3",
       fc: bulletin.start_date.slice(0, 4),
     }).toString();
-    const departments = parseAffectedDepartments(await fetchText(mapUrl));
-    if (departments.includes("arequipa")) alerts.push(bulletin);
+    try {
+      const departments = parseAffectedDepartments(await fetchText(mapUrl));
+      if (!departments.length) {
+        warnings.push(
+          `Aviso ${bulletin.number}: SENAMHI no publicó departamentos afectados en su mapa.`,
+        );
+      } else if (departments.includes(department)) {
+        alerts.push(bulletin);
+      }
+    } catch (error) {
+      console.error(`Could not verify coverage for SENAMHI bulletin ${bulletin.number}:`, error);
+      warnings.push(
+        `Aviso ${bulletin.number}: no fue posible verificar su cobertura departamental.`,
+      );
+    }
   }
   alerts.sort(
     (left, right) =>
@@ -122,6 +171,8 @@ export async function fetchActiveAlerts(now = new Date()) {
   return {
     alerts,
     updated_at: now.toISOString(),
-    source_url: SENAMHI_URL,
+    source_url: sourceUrl,
+    verification: warnings.length ? "partial" : "complete",
+    warnings,
   };
 }

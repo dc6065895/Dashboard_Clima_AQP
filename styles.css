@@ -69,6 +69,12 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .breadcrumb { display: flex; align-items: center; gap: 10px; color: #738078; font-size: 11px; }
 .breadcrumb strong { color: #d4dbd0; font-weight: 500; }
 .crumb-sep { color: #4d5b51; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.location-picker { display: flex; flex: 0 1 345px; align-items: center; gap: 6px; min-width: 0; margin-left: auto; margin-right: 18px; }
+.location-picker select, .location-picker input { min-width: 0; height: 32px; padding: 0 9px; color: #cbd9e0; background: #192631; border: 1px solid #344653; border-radius: 6px; font: 10px var(--sans); }
+.location-picker select { flex: 0 1 145px; }
+.location-picker input { flex: 1 1 190px; width: 190px; }
+.location-picker select:focus-visible, .location-picker input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .topbar-right { display: flex; align-items: center; gap: 18px; }
 .live-clock { display: flex; align-items: center; gap: 7px; color: #8c9b8d; font: 9px var(--mono); letter-spacing: .2px; }
 .live-indicator { width: 6px; height: 6px; margin-right: 1px; }
@@ -150,6 +156,7 @@ h1 span, h2 span { color: var(--green); }
 .senamhi-status.is-active .status-dot { background: #efb64f; box-shadow: 0 0 9px #efb64f88; }
 .senamhi-status.is-error { color: #e69a91; }
 .senamhi-status.is-error .status-dot { background: #d87c73; }
+.senamhi-status.is-partial { color: #e4c28b; }
 .senamhi-list { display: grid; gap: 6px; margin: 8px 0 0 47px; }
 .senamhi-alert { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 7px 9px; background: #212e39; border: 1px solid #3a4c59; border-radius: 6px; }
 .severity-marker { flex: 0 0 auto; width: 7px; height: 7px; background: #e0b65e; border-radius: 50%; box-shadow: 0 0 8px #e0b65e66; }
@@ -206,16 +213,29 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
 .satellite-heading .media-controls { width: 100%; justify-content: flex-end; }
 .satellite-badge { padding: 4px 6px; color: #c2d3da; background: #202d38; border: 1px solid #3a4a56; border-radius: 4px; font: 8px var(--mono); }
 .satellite-image { position: relative; height: 211px; overflow: hidden; background-color: #18232d; background-image: linear-gradient(0deg, #0e151dbb, transparent 40%), url("https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/NSA/GEOCOLOR/1800x1080.jpg"); background-position: center, 50% 50%; background-size: cover, 100% auto; border: 1px solid #34434f; border-radius: 7px; cursor: zoom-in; }
-.satellite-image::after { position: absolute; inset: 0; background: linear-gradient(180deg, #10181677 0%, transparent 25%, transparent 67%, #10181680 100%); content: ""; pointer-events: none; }
-.satellite-crosshair { position: absolute; z-index: 1; top: 56%; left: 51%; display: grid; justify-items: center; gap: 5px; transform: translate(-50%, -50%); }
+.satellite-image::after { position: absolute; z-index: 1; inset: 0; background: linear-gradient(180deg, #10181677 0%, transparent 25%, transparent 67%, #10181680 100%); content: ""; pointer-events: none; }
+.cira-view { position: absolute; z-index: 3; inset: 0; flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; padding: 18px 22px; color: #e4edf1; background: radial-gradient(ellipse at 85% 20%, #446276 0, transparent 44%); }
+.cira-view:not([hidden]) { display: flex; }
+.cira-view .cira-kicker { color: #9ab8c7; font: 8px var(--mono); letter-spacing: .8px; }
+.cira-view > strong { font-size: 19px; }
+.cira-view p { max-width: 470px; margin: 0; color: #c1d0d7; font-size: 11px; line-height: 1.5; }
+.cira-view a { display: inline-flex; align-items: center; min-height: 32px; padding: 0 11px; color: #ecf4f7; background: #355369; border: 1px solid #7996a7; border-radius: 5px; font-size: 10px; text-decoration: none; }
+.cira-view a:hover { background: #456a82; }
+.satellite-image.is-cira-view::after, .satellite-image.is-cira-view > .satellite-crosshair, .satellite-image.is-cira-view > .satellite-overlay, .satellite-image.is-cira-view > .satellite-coordinates, .satellite-image.is-cira-view > .satellite-frame-time, .satellite-image.is-cira-view > .satellite-zoom-controls { display: none; }
+.satellite-loop-layer { position: absolute; z-index: 0; inset: 0; overflow: hidden; pointer-events: none; }
+.satellite-loop-layer[hidden] { display: none; }
+.satellite-loop-layer img { position: absolute; max-width: none; opacity: 0; transition: opacity .45s linear; }
+.satellite-loop-layer img.is-visible { opacity: 1; }
+.satellite-crosshair { position: absolute; z-index: 2; top: 56%; left: 51%; display: grid; justify-items: center; gap: 5px; transform: translate(-50%, -50%); }
 .satellite-crosshair span { width: 12px; height: 12px; border: 1px solid #d8edb8; border-radius: 50%; box-shadow: 0 0 0 5px #b8ec7333, 0 0 12px #e5f4c4aa; }
 .satellite-crosshair i { width: 1px; height: 17px; margin-top: -21px; background: #d9efb0; }
 .satellite-crosshair b { margin-top: 1px; padding: 3px 5px; color: #ebf3dd; background: #131d19d9; border: 1px solid #53634b; border-radius: 3px; font: 7px var(--mono); letter-spacing: .5px; }
-.satellite-overlay { position: absolute; z-index: 1; inset: 9px 9px auto; display: flex; justify-content: space-between; color: #e3e9dd; font: 8px var(--mono); letter-spacing: .4px; }
+.satellite-overlay { position: absolute; z-index: 2; inset: 9px 9px auto; display: flex; justify-content: space-between; color: #e3e9dd; font: 8px var(--mono); letter-spacing: .4px; }
 .sat-live { padding: 4px 6px; background: #17201cce; border: 1px solid #526047; border-radius: 4px; }
 .sat-live i { width: 5px; height: 5px; }
 .satellite-overlay > span:last-child { align-self: flex-start; padding: 4px 5px; background: #17201cce; border-radius: 3px; }
-.satellite-coordinates { position: absolute; z-index: 1; right: 8px; bottom: 8px; color: #e0e9d9; font: 8px var(--mono); }
+.satellite-coordinates { position: absolute; z-index: 2; right: 8px; bottom: 8px; color: #e0e9d9; font: 8px var(--mono); }
+.satellite-frame-time { position: absolute; z-index: 2; right: 8px; bottom: 23px; color: #e0e9d9; font: 8px var(--mono); }
 .satellite-zoom-controls { position: absolute; z-index: 2; bottom: 9px; left: 9px; display: flex; align-items: center; overflow: hidden; background: #111923e8; border: 1px solid #566b79; border-radius: 5px; box-shadow: 0 2px 10px #0005; }
 .satellite-zoom-controls button { display: grid; place-items: center; min-width: 27px; height: 26px; padding: 0 6px; color: #e1edf1; background: transparent; border: 0; border-right: 1px solid #3a4a56; font: 15px/1 var(--sans); cursor: pointer; }
 .satellite-zoom-controls button:last-child { border-right: 0; }
@@ -331,6 +351,7 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
   .brand-copy small, .sidebar-label, .main-nav, .station-list, .sidebar-bottom { display: none; }
   .main-content { margin-left: 0; padding: 0 18px 22px; }
   .topbar { height: 50px; }
+  .location-picker { flex-basis: 330px; margin-right: 12px; }
   .page-heading { padding-top: 21px; }
   .lower-grid { grid-template-columns: 1fr; }
   .media-panel.is-expanded { inset: 2vh 2vw; padding: 12px; }
@@ -342,7 +363,11 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
 }
 @media (max-width: 560px) {
   .main-content { padding-right: 13px; padding-left: 13px; }
+  .topbar { height: auto; min-height: 50px; flex-wrap: wrap; row-gap: 8px; padding: 8px 0; }
   .topbar-right { gap: 8px; }
+  .location-picker { order: 3; flex: 1 0 100%; gap: 6px; margin: 0; }
+  .location-picker select { flex: 0 0 42%; max-width: 42%; }
+  .location-picker input { flex: 1 1 auto; width: 0; }
   .live-clock { gap: 5px; font-size: 7px; }
   .live-clock .clock-sep { display: none; }
   .breadcrumb { gap: 6px; font-size: 9px; }

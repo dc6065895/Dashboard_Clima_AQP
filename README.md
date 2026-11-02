@@ -1,6 +1,6 @@
-# Clima Sur · Arequipa
+# Clima Sur · Perú
 
-Panel meteorológico web, adaptable a móvil, para Cerro Colorado, Arequipa periferia (alta montaña), Yanahuara y Cayma.
+Panel meteorológico web, adaptable a móvil, con selección de regiones y búsqueda de distritos/localidades del Perú, priorizando Arequipa y Lima. Cerro Colorado, Arequipa periferia (alta montaña), Yanahuara y Cayma permanecen como ubicaciones rápidas.
 
 ## Ejecutar
 
@@ -10,13 +10,13 @@ No requiere instalación de paquetes ni compilación. Con Python 3.9 o posterior
 python3 server.py
 ```
 
-Abre `http://localhost:8000` en el navegador. El servidor integrado publica los archivos y consulta los avisos oficiales de SENAMHI para Arequipa. El endpoint de avisos requiere que el servidor pueda acceder a internet; no funcionará si se publica solo como sitio estático.
+Abre `http://localhost:8000` en el navegador. El servidor integrado publica los archivos y sirve las API de avisos SENAMHI y del bucle infrarrojo GOES-19. Se necesita conexión a internet para consultar sus fuentes públicas.
 
 ## Publicar en Cloudflare y enviar avisos por WhatsApp
 
 La integración separa el sitio del servicio de notificaciones:
 
-- **Cloudflare Pages** publica `index.html`, `app.js` y `styles.css`. La función Pages en `functions/api/senamhi/alerts.js` mantiene el endpoint `/api/senamhi/alerts` en la versión pública.
+- **Cloudflare Pages** publica `index.html`, `app.js` y `styles.css`. Las funciones Pages en `functions/api/` exponen los endpoints de alertas SENAMHI y de los fotogramas del bucle GOES-19.
 - **Cloudflare Worker** vuelve a consultar SENAMHI cada 15 minutos y envía cada aviso nuevo o modificado una sola vez. Cloudflare D1 guarda las notificaciones para evitar repeticiones y permite reintentar envíos fallidos. El Worker no depende de que una computadora personal esté encendida.
 
 ### Requisitos previos
@@ -94,11 +94,12 @@ El plan gratuito puede bastar para el tráfico pequeño, sujeto a las cuotas y l
 
 - Condiciones actuales, humedad, radiación solar de onda corta, viento y pronósticos horarios y de tres días: [Open-Meteo](https://open-meteo.com/). Las coordenadas son representativas de cada zona; Cerro Colorado usa el punto `-16.379898, -71.557855` y solicita la celda de modelo más cercana (`cell_selection=nearest`). Las condiciones son estimaciones de modelo, no lecturas de una estación SENAMHI.
 - Mosaico de precipitación: [RainViewer](https://www.rainviewer.com/), sobre el mapa base de calles de Esri, con la atribución exigida por el servicio. No se consultan los mosaicos voluntarios de OpenStreetMap directamente, para evitar su política de bloqueo de uso.
-- Avisos meteorológicos oficiales de [SENAMHI para Arequipa](https://www.senamhi.gob.pe/?p=aviso-meteorologico&dp=arequipa): el servidor consulta el listado regional, verifica en el mapa de cada aviso si Arequipa aparece entre los departamentos afectados y muestra solo los avisos vigentes que incluyen la región, junto con su nivel, fechas y enlace al aviso original. Si SENAMHI o sus mapas no responden, la interfaz lo indica explícitamente en vez de informar que no hay alertas. Los reportes del COER e INDECI/COEN se consultan en sus propios canales y no se incorporan automáticamente al panel.
-- Imagen satelital de NOAA STAR, satélite GOES-19, sector `NSA` (South America - Northern), con filtros GeoColor, infrarrojo de onda larga (banda 13), AirMass y Sandwich. El marcador indica la ubicación elegida en la imagen sectorial; la vista inicial se encuadra alrededor de Cerro Colorado y permite volver a encuadrar al cambiar de localidad. Los botones de zoom y la rueda del ratón amplían la imagen; al acercar se solicita la versión sectorial de 3600 × 2160 px. Esta vista es regional y no una imagen recortada al distrito.
+- Avisos meteorológicos oficiales de [SENAMHI](https://www.senamhi.gob.pe/?p=aviso-meteorologico&dp=arequipa): el panel consulta la lista del departamento seleccionado y contrasta cada aviso vigente con los departamentos del mapa oficial. Si SENAMHI publica un aviso vigente sin departamentos en su mapa, se muestran los avisos verificables y se informa cuántos quedaron sin cobertura comprobable, en vez de convertir el mapa vacío en un error total o afirmar que no hay avisos. SENAMHI no ofrece en estas fuentes una cobertura estructurada por provincia; por eso el panel identifica la provincia seleccionada, pero explicita que la confirmación oficial es departamental y no presenta una inferencia como filtro oficial provincial. Los reportes del COER e INDECI/COEN no se incorporan automáticamente.
+- Selector geográfico: incluye los departamentos/regiones del Perú, separa Lima Metropolitana de Lima Provincias y prioriza sus capitales y Arequipa. El buscador consulta Open-Meteo Geocoding al escribir el nombre de un distrito o localidad y limita los resultados a la región elegida; muestra el topónimo del resultado, no un campo administrativo que puede pertenecer a otra jurisdicción. El punto resultante es una referencia geográfica del servicio, no necesariamente el centroide oficial del distrito; Cerro Colorado conserva las coordenadas fijadas `-16.379898, -71.557855`.
+- Imágenes satelitales GOES-19 de [NOAA STAR](https://www.star.nesdis.noaa.gov/GOES/), sector `NSA` (Sudamérica norte): GeoColor, Infrarrojo (banda 13), AirMass y Sandwich. El filtro Infrarrojo anima los ocho fotogramas recientes publicados por NOAA; su índice se consulta mediante `/api/goes/infrared-loop`. La opción CIRA abre el [visor interactivo RAMMB/CIRA](https://slider.cira.colostate.edu/) con el enlace GeoColor de GOES-19 solicitado. CIRA impide la incrustación en sitios externos (`X-Frame-Options: SAMEORIGIN`), por lo que su visor se abre en una pestaña aparte. El enlace al [visor satelital del Observatorio SENAMHI](https://observatorio.senamhi.gob.pe/investigadores/tiempo/satelite) permite contrastar el producto. Las imágenes NOAA son regionales y no están georreferenciadas a nivel de distrito: el marcador es una referencia visual aproximada. Los controles de zoom y la rueda amplían la imagen.
 - El punto de referencia por defecto de Cerro Colorado es `-16.379898, -71.557855`. En una consulta de validación, Open-Meteo seleccionó la celda más cercana en `-16.414762, -71.588960`, con elevación de 2,399 m; el mapa y el marcador permanecen en las coordenadas solicitadas. El mapa base y el radar se centran allí con zoom 12.
 - El filtro de radar permite cambiar el suavizado del mosaico de RainViewer o dejar solo el mapa base. RainViewer actualmente publica la paleta Universal Blue y limita el zoom nativo a 7; la interfaz no inventa otros productos de radar. La disponibilidad y cobertura local del radar dependen de los radares que suministren datos a RainViewer.
 - Las alertas locales calculadas a partir del pronóstico son orientativas; no sustituyen avisos oficiales de SENAMHI o de defensa civil.
-- Radiación solar, presión de superficie, pronóstico, radar, imagen satelital y avisos oficiales se actualizan cada 15 minutos; el servicio web conserva en caché los avisos SENAMHI por hasta 10 minutos. La selección de ubicación actualiza el pronóstico y centra el mapa en el distrito.
+- Radiación solar, presión de superficie, pronóstico, radar y avisos se actualizan cada 15 minutos. El bucle GOES usa los fotogramas recientes disponibles y vuelve a consultarlos cada 15 minutos; las consultas de la lista NOAA pueden almacenarse en caché hasta 5 minutos. En desarrollo local, el servidor conserva cada departamento consultado de SENAMHI por hasta 10 minutos. La selección de región y localidad actualiza el pronóstico, el alcance departamental de los avisos y el centro del mapa.
 
 Las fuentes son servicios públicos de terceros sujetos a disponibilidad, cobertura, políticas de uso y atribución propias. Se requiere conexión a internet para cargar el mapa, las fuentes y las tipografías.

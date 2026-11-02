@@ -4,38 +4,77 @@ const LOCATIONS = {
   "cerro-colorado": {
     name: "Cerro Colorado",
     subtitle: "Cerro Colorado, Arequipa, Arequipa",
+    province: "Arequipa",
     coordinates: [-16.379898, -71.557855],
     elevation: 2399,
+    regionId: "arequipa",
   },
   periferia: {
     name: "Arequipa periferia",
     subtitle: "Arequipa periferia (alta montaña), Arequipa",
+    province: "Arequipa",
     coordinates: [-16.48, -71.52],
     elevation: 3400,
+    regionId: "arequipa",
   },
   yanahuara: {
     name: "Yanahuara",
     subtitle: "Yanahuara, Arequipa, Arequipa",
+    province: "Arequipa",
     coordinates: [-16.389, -71.537],
     elevation: 2390,
+    regionId: "arequipa",
   },
   cayma: {
     name: "Cayma",
     subtitle: "Cayma, Arequipa, Arequipa",
+    province: "Arequipa",
     coordinates: [-16.35, -71.548],
     elevation: 2450,
+    regionId: "arequipa",
   },
 };
 
+const REGIONS = [
+  { id: "amazonas", name: "Amazonas", capital: "Chachapoyas", department: "amazonas" },
+  { id: "ancash", name: "Áncash", capital: "Huaraz", department: "ancash" },
+  { id: "apurimac", name: "Apurímac", capital: "Abancay", department: "apurimac" },
+  { id: "arequipa", name: "Arequipa", capital: "Arequipa", department: "arequipa" },
+  { id: "ayacucho", name: "Ayacucho", capital: "Ayacucho", department: "ayacucho" },
+  { id: "cajamarca", name: "Cajamarca", capital: "Cajamarca", department: "cajamarca" },
+  { id: "callao", name: "Callao", capital: "Callao", department: "callao" },
+  { id: "cusco", name: "Cusco", capital: "Cusco", department: "cusco" },
+  { id: "huancavelica", name: "Huancavelica", capital: "Huancavelica", department: "huancavelica" },
+  { id: "huanuco", name: "Huánuco", capital: "Huánuco", department: "huanuco" },
+  { id: "ica", name: "Ica", capital: "Ica", department: "ica" },
+  { id: "junin", name: "Junín", capital: "Huancayo", department: "junin" },
+  { id: "la-libertad", name: "La Libertad", capital: "Trujillo", department: "la-libertad" },
+  { id: "lambayeque", name: "Lambayeque", capital: "Chiclayo", department: "lambayeque" },
+  { id: "lima-metropolitana", name: "Lima Metropolitana", capital: "Lima", department: "lima" },
+  { id: "lima-provincias", name: "Lima Provincias", capital: "Huacho", department: "lima" },
+  { id: "loreto", name: "Loreto", capital: "Iquitos", department: "loreto" },
+  { id: "madre-de-dios", name: "Madre de Dios", capital: "Puerto Maldonado", department: "madre-de-dios" },
+  { id: "moquegua", name: "Moquegua", capital: "Moquegua", department: "moquegua" },
+  { id: "pasco", name: "Pasco", capital: "Cerro de Pasco", department: "pasco" },
+  { id: "piura", name: "Piura", capital: "Piura", department: "piura" },
+  { id: "puno", name: "Puno", capital: "Puno", department: "puno" },
+  { id: "san-martin", name: "San Martín", capital: "Moyobamba", department: "san-martin" },
+  { id: "tacna", name: "Tacna", capital: "Tacna", department: "tacna" },
+  { id: "tumbes", name: "Tumbes", capital: "Tumbes", department: "tumbes" },
+  { id: "ucayali", name: "Ucayali", capital: "Pucallpa", department: "ucayali" },
+];
+
 const UPDATE_INTERVAL = 15 * 60 * 1000;
+const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 const NOAA_PRODUCTS = {
   geocolor: {
     label: "GeoColor",
     path: "GEOCOLOR",
   },
   infrared: {
-    label: "Infrarrojo · banda 13",
+    label: "Infrarrojo",
     path: "13",
+    loop: true,
   },
   airmass: {
     label: "AirMass",
@@ -45,7 +84,13 @@ const NOAA_PRODUCTS = {
     label: "Sandwich",
     path: "Sandwich",
   },
+  cira: {
+    label: "CIRA",
+    external: true,
+  },
 };
+const CIRA_VIEWER_URL =
+  "https://slider.cira.colostate.edu/?sat=goes-19&sec=full_disk&x=11214&y=13900.6669921875&z=4&angle=0&im=12&ts=1&st=0&et=0&speed=130&motion=loop&maps%5Bborders%5D=white&p%5B0%5D=geocolor&opacity%5B0%5D=1&pause=0&slider=-1&hide_controls=0&mouse_draw=0&follow_feature=0&follow_hide=0&s=rammb-slider&draw_color=FFD700&draw_width=6";
 const WEATHER_CODES = {
   0: ["Despejado", "☀"],
   1: ["Mayormente despejado", "🌤"],
@@ -108,10 +153,22 @@ const elements = {
   senamhiList: document.querySelector("#senamhi-list"),
   nextUpdate: document.querySelector("#next-update"),
   radarTimestamp: document.querySelector("#radar-timestamp"),
+  regionSelect: document.querySelector("#region-select"),
+  locationSearch: document.querySelector("#location-search"),
+  locationOptions: document.querySelector("#location-options"),
+  locationSearchStatus: document.querySelector("#location-search-status"),
+  senamhiRegion: document.querySelector("#senamhi-region"),
+  senamhiSourceLink: document.querySelector("#senamhi-source-link"),
 };
 
 let selectedId = "cerro-colorado";
 let selectedLocation = LOCATIONS[selectedId];
+let selectedRegionId = selectedLocation.regionId;
+let geocodingMatches = new Map();
+let locationSearchTimer;
+let locationSearchRequestId = 0;
+let weatherRequestId = 0;
+let senamhiRequestId = 0;
 let map;
 let locationMarker;
 let radarLayer;
@@ -119,6 +176,10 @@ let latestRadarFrame;
 let selectedRadarFilter = "standard";
 let selectedSatelliteProduct = "geocolor";
 let satelliteZoom = 2.5;
+let satelliteFrames = [];
+let satelliteFrameElements = [];
+let satelliteFrameIndex = -1;
+let satelliteLoopTimer;
 let nextUpdateAt = Date.now() + UPDATE_INTERVAL;
 // NOAA's fixed NSA JPEG has no pixel georeferencing; this is a visual sector anchor.
 const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 23, y: 75 };
@@ -158,26 +219,213 @@ function setText(element, value) {
   if (element) element.textContent = value;
 }
 
+function normalizePlace(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function getRegion(regionId = selectedRegionId) {
+  return REGIONS.find((region) => region.id === regionId) || REGIONS[3];
+}
+
+function geocoderMatchesRegion(result, regionId) {
+  const department = normalizePlace(result.admin1).replace(/^departamento de /, "");
+  const province = normalizePlace(result.admin2).replace(/^provincia de /, "");
+  if (regionId === "lima-metropolitana") {
+    return (
+      (department.includes("lima") && province === "lima") ||
+      (department === "provincia de lima" &&
+        normalizePlace(result.name) === "lima")
+    );
+  }
+  if (regionId === "lima-provincias") {
+    return department.includes("lima") && province !== "lima";
+  }
+  if (regionId === "callao") {
+    return department.includes("callao") || province.includes("callao");
+  }
+  return department.includes(normalizePlace(regionId).replace(/-/g, " "));
+}
+
+function makeGeocodedLocation(result, region) {
+  const name = result.name;
+  const province = result.admin2?.replace(/^Provincia de /i, "");
+  const locationParts = [...new Set([name, province, region.name].filter(Boolean))];
+  const subtitle = [...locationParts, "Perú"].join(", ");
+  const pickerLabel = locationParts.join(" · ");
+  return {
+    name,
+    subtitle,
+    coordinates: [result.latitude, result.longitude],
+    elevation: Number.isFinite(result.elevation) ? result.elevation : null,
+    regionId: region.id,
+    department: region.department,
+    province: province || null,
+    pickerLabel,
+    geocoderId: result.id,
+  };
+}
+
+function markerPopupContent() {
+  const content = document.createElement("div");
+  const title = document.createElement("strong");
+  title.textContent = selectedLocation.name;
+  const elevation = document.createElement("div");
+  elevation.textContent = Number.isFinite(selectedLocation.elevation)
+    ? `${selectedLocation.elevation.toLocaleString("es-PE")} m s. n. m.`
+    : "Elevación no disponible";
+  content.append(title, elevation);
+  return content;
+}
+
+function updateSenamhiRegion() {
+  const region = getRegion();
+  setText(elements.senamhiRegion, region.name);
+  if (elements.senamhiSourceLink) {
+    elements.senamhiSourceLink.href =
+      `https://www.senamhi.gob.pe/?p=aviso-meteorologico&dp=${region.department}`;
+    elements.senamhiSourceLink.setAttribute(
+      "aria-label",
+      `Abrir avisos oficiales de SENAMHI para ${region.name}`,
+    );
+  }
+}
+
 function updateLocationLabels() {
   setText(elements.breadcrumb, selectedLocation.name);
+  const elevationText = Number.isFinite(selectedLocation.elevation)
+    ? `${selectedLocation.elevation.toLocaleString("es-PE")} m s. n. m.`
+    : "elevación no disponible";
   setText(
     elements.locationSubtitle,
-    `${selectedLocation.subtitle} · ${selectedLocation.elevation.toLocaleString("es-PE")} m s. n. m.`,
+    `${selectedLocation.subtitle} · ${elevationText}`,
   );
   setText(elements.mapName, selectedLocation.name.toLocaleUpperCase("es-PE"));
+  document
+    .querySelector("#rain-map")
+    ?.setAttribute("aria-label", `Mapa de radar de lluvia para ${selectedLocation.name}`);
   setText(elements.satelliteName, selectedLocation.name.toLocaleUpperCase("es-PE"));
   setText(
     elements.satelliteCoordinates,
     formatCoordinates(selectedLocation.coordinates),
   );
+  if (elements.regionSelect) elements.regionSelect.value = selectedRegionId;
+  if (elements.locationSearch) {
+    elements.locationSearch.value =
+      selectedLocation.pickerLabel || `${selectedLocation.name} · ${getRegion().name}`;
+  }
+  document.querySelectorAll(".station").forEach((button) => {
+    button.classList.toggle("active", button.dataset.location === selectedId);
+  });
+  updateSenamhiRegion();
   renderSatelliteImage();
   if (map && locationMarker) {
-    map.setView(selectedLocation.coordinates, map.getZoom(), { animate: true });
+    map.setView(selectedLocation.coordinates, map.getZoom(), { animate: false });
+    map.invalidateSize({ pan: false });
     locationMarker.setLatLng(selectedLocation.coordinates);
-    locationMarker.setPopupContent(
-      `<strong>${selectedLocation.name}</strong><br>${selectedLocation.elevation.toLocaleString("es-PE")} m s. n. m.`,
-    );
+    locationMarker.setPopupContent(markerPopupContent());
   }
+}
+
+function setSelectedLocation(location, regionId, id) {
+  selectedLocation = location;
+  selectedRegionId = regionId;
+  selectedId = id;
+  satelliteZoom = 2.5;
+  updateLocationLabels();
+  loadWeather();
+  loadSenamhiAlerts();
+}
+
+async function searchGeocodedPlaces(query, regionId) {
+  const requestId = ++locationSearchRequestId;
+  const region = getRegion(regionId);
+  const params = new URLSearchParams({
+    name: query,
+    count: "30",
+    language: "es",
+    format: "json",
+    countryCode: "PE",
+  });
+  try {
+    const response = await fetch(`${GEOCODING_URL}?${params}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error(`Open-Meteo Geocoding respondió ${response.status}`);
+    const data = await response.json();
+    if (requestId !== locationSearchRequestId) return [];
+    const results = (data.results || [])
+      .filter(
+        (result) =>
+          result.country_code === "PE" &&
+          geocoderMatchesRegion(result, regionId) &&
+          /^(PPLA|PPL)/.test(result.feature_code || ""),
+      )
+      .sort((left, right) => {
+        const queryName = normalizePlace(query);
+        const leftExact =
+          normalizePlace(left.name) === queryName ||
+          normalizePlace(left.admin3) === queryName;
+        const rightExact =
+          normalizePlace(right.name) === queryName ||
+          normalizePlace(right.admin3) === queryName;
+        return Number(rightExact) - Number(leftExact);
+      });
+    geocodingMatches.clear();
+    elements.locationOptions.replaceChildren();
+    results.forEach((result) => {
+      const location = makeGeocodedLocation(result, region);
+      const option = document.createElement("option");
+      option.value = location.pickerLabel;
+      elements.locationOptions.append(option);
+      geocodingMatches.set(location.pickerLabel, { location, result });
+    });
+    setText(
+      elements.locationSearchStatus,
+      results.length
+        ? `${results.length} ubicación${results.length === 1 ? "" : "es"} en ${region.name}; selecciona una opción.`
+        : `No se encontraron distritos o localidades en ${region.name}.`,
+    );
+    return results;
+  } catch (error) {
+    if (requestId !== locationSearchRequestId) return [];
+    console.error("No fue posible buscar ubicaciones:", error);
+    setText(elements.locationSearchStatus, "No se pudo consultar el buscador de ubicaciones.");
+    return [];
+  }
+}
+
+async function selectRegionDefault(regionId) {
+  const region = getRegion(regionId);
+  setText(elements.locationSearchStatus, `Buscando ${region.capital}…`);
+  const results = await searchGeocodedPlaces(region.capital, regionId);
+  if (!results.length) {
+    elements.regionSelect.value = selectedRegionId;
+    return;
+  }
+  const capital = normalizePlace(region.capital);
+  const match =
+    results.find(({ name }) => normalizePlace(name) === capital) || results[0];
+  const location = makeGeocodedLocation(match, region);
+  setSelectedLocation(location, region.id, `geonames-${match.id}`);
+  setText(elements.locationSearchStatus, `Ubicación predeterminada: ${location.name}, ${region.name}.`);
+}
+
+function handleLocationSearch() {
+  const value = elements.locationSearch.value.trim();
+  const match = geocodingMatches.get(value);
+  if (match) {
+    window.clearTimeout(locationSearchTimer);
+    const region = getRegion(selectedRegionId);
+    const location = makeGeocodedLocation(match.result, region);
+    setSelectedLocation(location, region.id, `geonames-${match.result.id}`);
+    setText(elements.locationSearchStatus, `Ubicación seleccionada: ${location.name}, ${region.name}.`);
+    return;
+  }
+  setText(elements.locationSearchStatus, "Selecciona un resultado de la lista para cambiar de ubicación.");
 }
 
 function initializeMap() {
@@ -208,9 +456,7 @@ function initializeMap() {
     }),
   })
     .addTo(map)
-    .bindPopup(
-      `<strong>${selectedLocation.name}</strong><br>${selectedLocation.elevation.toLocaleString("es-PE")} m s. n. m.`,
-    );
+    .bindPopup(markerPopupContent());
   map.whenReady(() => window.setTimeout(() => map.invalidateSize(), 100));
   refreshRadar();
 }
@@ -273,15 +519,119 @@ function setSatelliteProduct(productId) {
   const product = NOAA_PRODUCTS[productId];
   if (!product) return;
   selectedSatelliteProduct = productId;
+  document
+    .querySelector(".satellite-image")
+    .classList.toggle("is-cira-view", Boolean(product.external));
   renderSatelliteImage();
   setText(document.querySelector("#satellite-product-title"), product.label);
-  setText(document.querySelector("#satellite-product-overlay"), `GOES-19 · ${product.label.toLocaleUpperCase("es-PE")}`);
+  if (!product.external) {
+    setText(document.querySelector("#satellite-product-overlay"), `GOES-19 · ${product.label.toLocaleUpperCase("es-PE")}`);
+  }
+  document.querySelector("#satellite-cira-link").href = CIRA_VIEWER_URL;
+  if (product.loop) loadInfraredLoop();
+}
+
+async function loadInfraredLoop() {
+  try {
+    const response = await fetch("/api/goes/infrared-loop", { cache: "no-store" });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `NOAA respondió ${response.status}`);
+    }
+    if (!Array.isArray(data.frames) || data.frames.length < 2) {
+      throw new Error("NOAA no publicó suficientes imágenes para formar el bucle");
+    }
+    const frames = [...data.frames].sort((left, right) =>
+      left.timestamp.localeCompare(right.timestamp),
+    );
+    const frameElements = frames.map((frame) => {
+      const image = document.createElement("img");
+      image.alt = "";
+      image.draggable = false;
+      image.dataset.timestamp = frame.timestamp;
+      image.src = frame.url;
+      return image;
+    });
+    await Promise.all(
+      frameElements.map(
+        (image) =>
+          new Promise((resolve) => {
+            if (image.complete) {
+              resolve();
+              return;
+            }
+            image.addEventListener("load", resolve, { once: true });
+            image.addEventListener("error", resolve, { once: true });
+          }),
+      ),
+    );
+    satelliteFrames = frames.filter(
+      (_, index) => frameElements[index].naturalWidth > 0,
+    );
+    satelliteFrameElements = frameElements.filter((image) => image.naturalWidth > 0);
+    if (satelliteFrames.length < 2) {
+      throw new Error("No se pudieron cargar suficientes imágenes infrarrojas de NOAA");
+    }
+    document
+      .querySelector("#satellite-loop-layer")
+      .replaceChildren(...satelliteFrameElements);
+    satelliteFrameIndex = -1;
+    renderSatelliteImage();
+    if (satelliteLoopTimer) window.clearInterval(satelliteLoopTimer);
+    satelliteLoopTimer = window.setInterval(showNextSatelliteFrame, 900);
+  } catch (error) {
+    console.error("No fue posible cargar el bucle infrarrojo de GOES-19:", error);
+    if (selectedSatelliteProduct === "infrared") {
+      setText(
+        document.querySelector("#satellite-product-overlay"),
+        "GOES-19 · BUCLE NO DISPONIBLE",
+      );
+    }
+  }
+}
+
+function showNextSatelliteFrame() {
+  if (
+    selectedSatelliteProduct !== "infrared" ||
+    satelliteFrameElements.length < 2
+  ) {
+    return;
+  }
+  satelliteFrameIndex = (satelliteFrameIndex + 1) % satelliteFrameElements.length;
+  satelliteFrameElements.forEach((image, index) => {
+    image.classList.toggle("is-visible", index === satelliteFrameIndex);
+  });
+  const timestamp = satelliteFrames[satelliteFrameIndex].timestamp;
+  setText(
+    document.querySelector("#satellite-frame-time"),
+    new Intl.DateTimeFormat("es-PE", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "America/Lima",
+    }).format(new Date(timestamp)),
+  );
 }
 
 function renderSatelliteImage() {
   const product = NOAA_PRODUCTS[selectedSatelliteProduct];
   const image = document.querySelector(".satellite-image");
+  if (!image) return;
+  const loopLayer = document.querySelector("#satellite-loop-layer");
   const marker = document.querySelector(".satellite-crosshair");
+  const ciraView = document.querySelector("#satellite-cira-view");
+  if (product.external) {
+    image.style.backgroundImage = "linear-gradient(145deg, #172834, #263b49 52%, #182731)";
+    image.style.backgroundSize = "cover";
+    image.style.backgroundPosition = "center";
+    ciraView.hidden = false;
+    image.setAttribute(
+      "aria-label",
+      "Vista CIRA GOES-19 interactiva; abrir el visor externo para explorar la imagen satelital",
+    );
+    loopLayer.hidden = true;
+    return;
+  }
+  ciraView.hidden = true;
   const bounds = image.getBoundingClientRect();
   const aspectRatio = 1800 / 1080;
   const baseWidth = Math.max(bounds.width, bounds.height * aspectRatio);
@@ -299,11 +649,24 @@ function renderSatelliteImage() {
   };
   const horizontal = calculateAxis(position.x, imageWidth, bounds.width);
   const vertical = calculateAxis(position.y, imageHeight, bounds.height);
+  const isLoop = product.loop && satelliteFrameElements.length > 0;
   const resolution = satelliteZoom > 1 ? "3600x2160" : "1800x1080";
   const imageUrl = `https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/NSA/${product.path}/${resolution}.jpg?t=${Date.now()}`;
-  image.style.backgroundImage = `linear-gradient(0deg, #0e19158a, transparent 40%), url("${imageUrl}")`;
+  image.style.backgroundColor = "";
+  image.style.backgroundImage = isLoop
+    ? "linear-gradient(0deg, #0e19158a, transparent 40%)"
+    : `linear-gradient(0deg, #0e19158a, transparent 40%), url("${imageUrl}")`;
   image.style.backgroundSize = `cover, ${imageWidth}px ${imageHeight}px`;
   image.style.backgroundPosition = `center, ${-horizontal.offset}px ${-vertical.offset}px`;
+  if (loopLayer) loopLayer.hidden = !isLoop;
+  if (isLoop) {
+    satelliteFrameElements.forEach((frame) => {
+      frame.style.width = `${imageWidth}px`;
+      frame.style.height = `${imageHeight}px`;
+      frame.style.left = `${-horizontal.offset}px`;
+      frame.style.top = `${-vertical.offset}px`;
+    });
+  }
   marker.style.left = `${(horizontal.marker / bounds.width) * 100}%`;
   marker.style.top = `${(vertical.marker / bounds.height) * 100}%`;
   image.setAttribute(
@@ -458,19 +821,38 @@ function renderAlerts(current, rainChance) {
 
 function renderSenamhiAlerts(data) {
   elements.senamhiList.replaceChildren();
-  elements.senamhiStatus.classList.remove("is-error", "is-active");
+  elements.senamhiStatus.classList.remove("is-error", "is-active", "is-partial");
   if (data.error) {
     elements.senamhiStatus.classList.add("is-error");
     setSenamhiStatus("No se pudo confirmar el estado de los avisos oficiales.");
     return;
   }
+  const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+  const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+  const region = getRegion().name;
+  const checkedAt = new Date(data.updated_at).toLocaleTimeString("es-PE", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Lima",
+  });
+  const coverageMessage =
+    data.verification === "partial"
+      ? ` · ${warnings.length} aviso${warnings.length === 1 ? "" : "s"} sin cobertura verificable`
+      : "";
+  const provinceScope = selectedLocation.province
+    ? ` · Provincia seleccionada: ${selectedLocation.province}; SENAMHI verifica el alcance por departamento`
+    : " · SENAMHI verifica el alcance por departamento, no por provincia";
   setSenamhiStatus(
-    data.alerts.length
-      ? `${data.alerts.length} aviso${data.alerts.length === 1 ? "" : "s"} vigente${data.alerts.length === 1 ? "" : "s"} · revisado ${new Date(data.updated_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: "America/Lima" })}`
-      : `Sin avisos vigentes para Arequipa · revisado ${new Date(data.updated_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: "America/Lima" })}`,
+    alerts.length
+      ? `${alerts.length} aviso${alerts.length === 1 ? "" : "s"} vigente${alerts.length === 1 ? "" : "s"} verificado${alerts.length === 1 ? "" : "s"} para ${region} · ${checkedAt}${provinceScope}${coverageMessage}`
+      : `Sin avisos vigentes verificados para ${region} · ${checkedAt}${provinceScope}${coverageMessage}`,
   );
-  elements.senamhiStatus.classList.toggle("is-active", data.alerts.length > 0);
-  data.alerts.forEach((alert) => {
+  elements.senamhiStatus.classList.toggle("is-active", alerts.length > 0);
+  elements.senamhiStatus.classList.toggle(
+    "is-partial",
+    data.verification === "partial",
+  );
+  alerts.forEach((alert) => {
     const item = document.createElement("article");
     item.className = `senamhi-alert severity-${alert.severity.toLowerCase()}`;
     const marker = document.createElement("span");
@@ -502,20 +884,27 @@ function setSenamhiStatus(message) {
 }
 
 async function loadSenamhiAlerts() {
+  const requestId = ++senamhiRequestId;
   try {
-    const response = await fetch("/api/senamhi/alerts", { cache: "no-store" });
+    const params = new URLSearchParams({ department: getRegion().department });
+    const response = await fetch(`/api/senamhi/alerts?${params}`, {
+      cache: "no-store",
+    });
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.error || `Servidor respondió ${response.status}`);
     }
+    if (requestId !== senamhiRequestId) return;
     renderSenamhiAlerts(data);
   } catch (error) {
+    if (requestId !== senamhiRequestId) return;
     console.error("No fue posible consultar los avisos de SENAMHI:", error);
     renderSenamhiAlerts({ error: true, alerts: [] });
   }
 }
 
 async function loadWeather() {
+  const requestId = ++weatherRequestId;
   const refreshButton = document.querySelector("#refresh-button");
   refreshButton.classList.add("is-loading");
   try {
@@ -525,6 +914,7 @@ async function loadWeather() {
     if (!data.current || !data.hourly?.time?.length || !data.daily?.time?.length) {
       throw new Error("La respuesta meteorológica está incompleta");
     }
+    if (requestId !== weatherRequestId) return;
     const currentIndex = getHourIndex(data.hourly.time, data.current.time);
     renderCurrent(data, currentIndex);
     renderHourly(data, currentIndex);
@@ -532,13 +922,14 @@ async function loadWeather() {
     nextUpdateAt = Date.now() + UPDATE_INTERVAL;
     setText(elements.nextUpdate, "en 15 min");
   } catch (error) {
+    if (requestId !== weatherRequestId) return;
     console.error("No fue posible actualizar el pronóstico:", error);
     setText(elements.description, "Datos no disponibles");
     elements.alert.classList.add("warning");
     elements.alert.innerHTML =
       '<span class="alert-ok-icon">!</span><span>No se pudieron cargar los datos. Verifica tu conexión e intenta actualizar.</span>';
   } finally {
-    refreshButton.classList.remove("is-loading");
+    if (requestId === weatherRequestId) refreshButton.classList.remove("is-loading");
   }
 }
 
@@ -569,20 +960,40 @@ document.querySelectorAll(".station").forEach((button) => {
   button.addEventListener("click", () => {
     const nextId = button.dataset.location;
     if (!nextId || !LOCATIONS[nextId] || nextId === selectedId) return;
-    selectedId = nextId;
-    selectedLocation = LOCATIONS[nextId];
-    satelliteZoom = 2.5;
-    document.querySelector(".station.active")?.classList.remove("active");
-    button.classList.add("active");
-    updateLocationLabels();
-    loadWeather();
+    setSelectedLocation(LOCATIONS[nextId], LOCATIONS[nextId].regionId, nextId);
+    setText(
+      elements.locationSearchStatus,
+      `Ubicación seleccionada: ${LOCATIONS[nextId].name}, Arequipa.`,
+    );
   });
 });
+
+elements.regionSelect.addEventListener("change", (event) => {
+  selectRegionDefault(event.currentTarget.value);
+});
+
+elements.locationSearch.addEventListener("input", () => {
+  const query = elements.locationSearch.value.trim();
+  window.clearTimeout(locationSearchTimer);
+  if (query.length < 2) {
+    geocodingMatches.clear();
+    elements.locationOptions.replaceChildren();
+    setText(elements.locationSearchStatus, "Escribe al menos dos caracteres para buscar.");
+    return;
+  }
+  locationSearchTimer = window.setTimeout(
+    () => searchGeocodedPlaces(query, selectedRegionId),
+    350,
+  );
+});
+
+elements.locationSearch.addEventListener("change", handleLocationSearch);
 
 document.querySelector("#refresh-button").addEventListener("click", () => {
   loadWeather();
   refreshRadar();
   loadSenamhiAlerts();
+  if (selectedSatelliteProduct === "infrared") loadInfraredLoop();
 });
 
 document.querySelector("#radar-filter").addEventListener("change", (event) => {
@@ -664,6 +1075,10 @@ window.setInterval(refreshRadar, UPDATE_INTERVAL);
 window.setInterval(loadSenamhiAlerts, UPDATE_INTERVAL);
 window.setInterval(updateClock, 1000);
 window.setInterval(() => {
-  setSatelliteProduct(selectedSatelliteProduct);
+  if (selectedSatelliteProduct === "infrared") {
+    loadInfraredLoop();
+  } else {
+    renderSatelliteImage();
+  }
 }, UPDATE_INTERVAL);
 window.addEventListener("resize", renderSatelliteImage);
