@@ -90,7 +90,7 @@ const NOAA_PRODUCTS = {
   },
 };
 const CIRA_VIEWER_URL =
-  "https://slider.cira.colostate.edu/?sat=goes-19&sec=full_disk&x=11214&y=13900.6669921875&z=4&angle=0&im=12&ts=1&st=0&et=0&speed=130&motion=loop&maps%5Bborders%5D=white&p%5B0%5D=geocolor&opacity%5B0%5D=1&pause=0&slider=-1&hide_controls=0&mouse_draw=0&follow_feature=0&follow_hide=0&s=rammb-slider&draw_color=FFD700&draw_width=6";
+  "https://slider.cira.colostate.edu/?sat=goes-19&sec=full_disk&x=11156&y=13780&z=4&angle=0&im=12&ts=1&st=0&et=0&speed=130&motion=loop&maps%5Bborders%5D=white&maps%5Bcities%5D=white&p%5B0%5D=band_09&opacity%5B0%5D=1&pause=0&slider=-1&hide_controls=0&mouse_draw=0&follow_feature=0&follow_hide=0&s=rammb-slider&draw_color=FFD700&draw_width=6";
 const WEATHER_CODES = {
   0: ["Despejado", "☀"],
   1: ["Mayormente despejado", "🌤"],
@@ -169,20 +169,18 @@ let locationSearchRequestId = 0;
 let weatherRequestId = 0;
 let senamhiRequestId = 0;
 let selectedSatelliteProduct = "geocolor";
-let satelliteZoom = 3.4;
+let satelliteZoom = 1.15;
 let senamhiSatelliteUrl;
 let satelliteFrames = [];
 let satelliteFrameElements = [];
 let satelliteFrameIndex = -1;
 let satelliteLoopTimer;
 let nextUpdateAt = Date.now() + UPDATE_INTERVAL;
-// Calibrated against the Peru boundaries in SENAMHI's PerC13CP product.
-const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 40.7, y: 73.8 };
 const SATELLITE_AREA = {
-  peru: { zoom: 1.65, center: [50, 62] },
-  north: { zoom: 2.05, center: [50, 37] },
-  center: { zoom: 2.35, center: [47, 57] },
-  south: { zoom: 2.7, center: [47, 76] },
+  peru: { zoom: 1, center: [50, 50] },
+  north: { zoom: 1.05, center: [50, 33] },
+  center: { zoom: 1.1, center: [50, 52] },
+  south: { zoom: 1.15, center: [43, 69] },
 };
 const SENAMHI_SATELLITE_INTERVAL = 10 * 60 * 1000;
 
@@ -469,14 +467,6 @@ function formatCoordinates([latitude, longitude]) {
   return `${toDms(latitude)}${latitude < 0 ? "S" : "N"} ${toDms(longitude)}${longitude < 0 ? "W" : "E"}`;
 }
 
-function getSatellitePosition(location = selectedLocation) {
-  const [latitude, longitude] = location.coordinates;
-  return {
-    x: SATELLITE_REFERENCE.x + (longitude - SATELLITE_REFERENCE.longitude) * 0.9,
-    y: SATELLITE_REFERENCE.y - (latitude - SATELLITE_REFERENCE.latitude) * 2.8,
-  };
-}
-
 function setSatelliteProduct(productId) {
   const product = NOAA_PRODUCTS[productId];
   if (!product) return;
@@ -580,7 +570,6 @@ function renderSatelliteImage() {
   const image = document.querySelector(".satellite-image");
   if (!image) return;
   const loopLayer = document.querySelector("#satellite-loop-layer");
-  const marker = document.querySelector(".satellite-crosshair");
   const ciraView = document.querySelector("#satellite-cira-view");
   if (product.external) {
     image.style.backgroundImage = "linear-gradient(145deg, #172834, #263b49 52%, #182731)";
@@ -600,7 +589,6 @@ function renderSatelliteImage() {
   const baseWidth = Math.max(bounds.width, bounds.height * aspectRatio);
   const imageWidth = baseWidth * satelliteZoom;
   const imageHeight = (imageWidth / aspectRatio);
-  const position = getSatellitePosition();
   const calculateAxis = (fraction, imageSize, viewportSize) => {
     const overflow = imageSize - viewportSize;
     if (overflow <= 0) return { offset: 0, marker: (fraction / 100) * imageSize };
@@ -613,8 +601,6 @@ function renderSatelliteImage() {
   const area = getSatelliteArea();
   const areaHorizontal = calculateAxis(area.center[0], imageWidth, bounds.width);
   const areaVertical = calculateAxis(area.center[1], imageHeight, bounds.height);
-  const markerHorizontal = (position.x / 100) * imageWidth - areaHorizontal.offset;
-  const markerVertical = (position.y / 100) * imageHeight - areaVertical.offset;
   const isLoop = product.loop && satelliteFrameElements.length > 0;
   const resolution = satelliteZoom > 1 ? "3600x2160" : "1800x1080";
   const imageUrl = product.senamhi
@@ -636,17 +622,9 @@ function renderSatelliteImage() {
       frame.style.top = `${-areaVertical.offset}px`;
     });
   }
-  const markerVisible =
-    markerHorizontal >= 0 &&
-    markerHorizontal <= bounds.width &&
-    markerVertical >= 0 &&
-    markerVertical <= bounds.height;
-  marker.hidden = !markerVisible;
-  marker.style.left = `${(markerHorizontal / bounds.width) * 100}%`;
-  marker.style.top = `${(markerVertical / bounds.height) * 100}%`;
   image.setAttribute(
     "aria-label",
-    `Imagen ${product.label} de GOES-19 sobre Sudamérica, centrada en ${selectedLocation.name}; zoom ${satelliteZoom.toFixed(1)}`,
+    `Imagen ${product.label} de GOES-19 y SENAMHI; área ${document.querySelector("#satellite-area-filter")?.selectedOptions[0]?.textContent || "Perú"}`,
   );
   setText(document.querySelector("#satellite-zoom-level"), `${satelliteZoom.toFixed(1)}×`);
   document.querySelector("#satellite-zoom-out").disabled = satelliteZoom <= 1;
