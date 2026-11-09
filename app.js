@@ -152,7 +152,6 @@ const elements = {
   senamhiStatus: document.querySelector("#senamhi-status"),
   senamhiList: document.querySelector("#senamhi-list"),
   nextUpdate: document.querySelector("#next-update"),
-  radarTimestamp: document.querySelector("#radar-timestamp"),
   regionSelect: document.querySelector("#region-select"),
   locationSearch: document.querySelector("#location-search"),
   locationOptions: document.querySelector("#location-options"),
@@ -169,11 +168,6 @@ let locationSearchTimer;
 let locationSearchRequestId = 0;
 let weatherRequestId = 0;
 let senamhiRequestId = 0;
-let map;
-let locationMarker;
-let radarLayer;
-let latestRadarFrame;
-let selectedRadarFilter = "standard";
 let selectedSatelliteProduct = "geocolor";
 let satelliteZoom = 2.5;
 let satelliteFrames = [];
@@ -304,9 +298,6 @@ function updateLocationLabels() {
     `${selectedLocation.subtitle} · ${elevationText}`,
   );
   setText(elements.mapName, selectedLocation.name.toLocaleUpperCase("es-PE"));
-  document
-    .querySelector("#rain-map")
-    ?.setAttribute("aria-label", `Mapa de radar de lluvia para ${selectedLocation.name}`);
   setText(elements.satelliteName, selectedLocation.name.toLocaleUpperCase("es-PE"));
   setText(
     elements.satelliteCoordinates,
@@ -322,12 +313,6 @@ function updateLocationLabels() {
   });
   updateSenamhiRegion();
   renderSatelliteImage();
-  if (map && locationMarker) {
-    map.setView(selectedLocation.coordinates, map.getZoom(), { animate: false });
-    map.invalidateSize({ pan: false });
-    locationMarker.setLatLng(selectedLocation.coordinates);
-    locationMarker.setPopupContent(markerPopupContent());
-  }
 }
 
 function setSelectedLocation(location, regionId, id) {
@@ -428,39 +413,6 @@ function handleLocationSearch() {
   setText(elements.locationSearchStatus, "Selecciona un resultado de la lista para cambiar de ubicación.");
 }
 
-function initializeMap() {
-  if (!window.L) {
-    setText(elements.radarTimestamp, "No se pudo cargar el mapa");
-    return;
-  }
-  map = L.map("rain-map", {
-    center: selectedLocation.coordinates,
-    zoom: 12,
-    zoomControl: true,
-    scrollWheelZoom: false,
-  });
-  L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-    {
-    attribution:
-      'Tiles &copy; Esri — Sources: Esri, HERE, Garmin, USGS, Intermap, INCREMENT P, NRCan, Esri Japan, METI, Esri China (Hong Kong), Esri Korea, Esri (Thailand), NGCC, &copy; OpenStreetMap contributors, and the GIS User Community',
-    maxZoom: 19,
-    },
-  ).addTo(map);
-  locationMarker = L.marker(selectedLocation.coordinates, {
-    icon: L.divIcon({
-      className: "",
-      html: '<span class="weather-marker"></span>',
-      iconSize: [15, 15],
-      iconAnchor: [7, 7],
-    }),
-  })
-    .addTo(map)
-    .bindPopup(markerPopupContent());
-  map.whenReady(() => window.setTimeout(() => map.invalidateSize(), 100));
-  refreshRadar();
-}
-
 function formatCoordinates([latitude, longitude]) {
   const toDms = (value) => {
     const absolute = Math.abs(value);
@@ -477,42 +429,6 @@ function getSatellitePosition(location = selectedLocation) {
     x: SATELLITE_REFERENCE.x + (longitude - SATELLITE_REFERENCE.longitude) * 1.5,
     y: SATELLITE_REFERENCE.y - (latitude - SATELLITE_REFERENCE.latitude) * 1.8,
   };
-}
-
-async function refreshRadar() {
-  if (!map) return;
-  try {
-    const response = await fetch("https://api.rainviewer.com/public/weather-maps.json", {
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`RainViewer respondió ${response.status}`);
-    const radarData = await response.json();
-    const frames = radarData.radar?.past || [];
-    const frame = frames[frames.length - 1];
-    if (!frame || !radarData.host) throw new Error("No hay imágenes de radar disponibles");
-    latestRadarFrame = { ...frame, host: radarData.host };
-    renderRadarLayer();
-    setText(
-      elements.radarTimestamp,
-      `Radar · ${new Date(latestRadarFrame.time * 1000).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit", timeZone: "America/Lima" })}`,
-    );
-  } catch (error) {
-    console.error("No fue posible actualizar el radar:", error);
-    setText(elements.radarTimestamp, "Radar no disponible temporalmente");
-  }
-}
-
-function renderRadarLayer() {
-  if (!map || !latestRadarFrame) return;
-  if (radarLayer) map.removeLayer(radarLayer);
-  radarLayer = undefined;
-  if (selectedRadarFilter === "base") return;
-  const smoothing = selectedRadarFilter === "standard" ? 1 : 0;
-  const opacity = selectedRadarFilter === "standard" ? 0.68 : 0.9;
-  radarLayer = L.tileLayer(
-    `${latestRadarFrame.host}${latestRadarFrame.path}/256/{z}/{x}/{y}/2/${smoothing}_1.png`,
-    { opacity, zIndex: 2, tileSize: 256, maxNativeZoom: 7, maxZoom: 19 },
-  ).addTo(map);
 }
 
 function setSatelliteProduct(productId) {
@@ -991,14 +907,8 @@ elements.locationSearch.addEventListener("change", handleLocationSearch);
 
 document.querySelector("#refresh-button").addEventListener("click", () => {
   loadWeather();
-  refreshRadar();
   loadSenamhiAlerts();
   if (selectedSatelliteProduct === "infrared") loadInfraredLoop();
-});
-
-document.querySelector("#radar-filter").addEventListener("change", (event) => {
-  selectedRadarFilter = event.currentTarget.value;
-  renderRadarLayer();
 });
 
 document.querySelector("#satellite-filter").addEventListener("change", (event) => {
@@ -1040,9 +950,6 @@ function setMediaExpanded(panel, expanded) {
   button.querySelector("svg").innerHTML = expanded
     ? '<path d="m6 6 12 12M18 6 6 18"/>'
     : '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M3 8l6-5m12 5-6-5M3 16l6 5m12-5-6 5"/>';
-  if (panel.id === "mapa" && map) {
-    window.setTimeout(() => map.invalidateSize(), 150);
-  }
 }
 
 document.querySelectorAll(".expand-button").forEach((button) => {
@@ -1065,13 +972,11 @@ document.querySelectorAll('.main-nav a[href^="#"]').forEach((link) => {
   });
 });
 
-initializeMap();
 updateLocationLabels();
 loadWeather();
 loadSenamhiAlerts();
 renderSatelliteImage();
 window.setInterval(loadWeather, UPDATE_INTERVAL);
-window.setInterval(refreshRadar, UPDATE_INTERVAL);
 window.setInterval(loadSenamhiAlerts, UPDATE_INTERVAL);
 window.setInterval(updateClock, 1000);
 window.setInterval(() => {

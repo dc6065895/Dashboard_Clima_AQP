@@ -313,7 +313,6 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
 .hour-time, .map-caption { color: #94a3ae; }
 .hour-card > strong { color: #e4edf1; }
 .map-frame { background: #17242e; border-color: #334653; }
-#rain-map { background-color: #1c2b35; background-image: radial-gradient(ellipse at 52% 46%, #2a3c48 0, #202f3b 44%, #17242e 100%); }
 .weather-marker { border-color: #e0f1f7; box-shadow: 0 0 0 5px #a9d0e033, 0 0 16px #a9d0e088; }
 .map-location-pill, .map-legend { background: #111923ed; border-color: #425461; }
 .satellite-image { background-color: #18232d; border-color: #34434f; }
