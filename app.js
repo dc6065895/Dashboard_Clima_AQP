@@ -74,7 +74,7 @@ const NOAA_PRODUCTS = {
   infrared: {
     label: "Infrarrojo",
     path: "13",
-    loop: true,
+    senamhi: true,
   },
   airmass: {
     label: "AirMass",
@@ -170,17 +170,56 @@ let weatherRequestId = 0;
 let senamhiRequestId = 0;
 let selectedSatelliteProduct = "geocolor";
 let satelliteZoom = 3.4;
+let senamhiSatelliteUrl;
 let satelliteFrames = [];
 let satelliteFrameElements = [];
 let satelliteFrameIndex = -1;
 let satelliteLoopTimer;
 let nextUpdateAt = Date.now() + UPDATE_INTERVAL;
-// Calibrated against the visible South America boundaries in NOAA's NSA sector.
-const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 20, y: 73 };
-const SATELLITE_AREA_ZOOM = { peru: 2.2, north: 2.8, center: 3.1, south: 3.4 };
+// Calibrated against the Peru boundaries in SENAMHI's PerC13CP product.
+const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 40.7, y: 73.8 };
+const SATELLITE_AREA = {
+  peru: { zoom: 1.65, center: [50, 62] },
+  north: { zoom: 2.05, center: [50, 37] },
+  center: { zoom: 2.35, center: [47, 57] },
+  south: { zoom: 2.7, center: [47, 76] },
+};
+const SENAMHI_SATELLITE_INTERVAL = 10 * 60 * 1000;
 
 function weatherDescription(code) {
   return WEATHER_CODES[code] || ["Condición variable", "⛅"];
+}
+
+function getSatelliteArea() {
+  return SATELLITE_AREA[document.querySelector("#satellite-area-filter")?.value] || SATELLITE_AREA.south;
+}
+
+function getSenamhiSatelliteUrls() {
+  const now = new Date();
+  now.setUTCMinutes(Math.floor(now.getUTCMinutes() / 10) * 10, 0, 0);
+  return Array.from({ length: 7 }, (_, index) => {
+    const timestamp = new Date(now.getTime() - index * SENAMHI_SATELLITE_INTERVAL);
+    const stamp = timestamp.toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    return `https://servicios.senamhi.gob.pe/api/remote-sensing/sat/G16D/Per/PerC13CP${stamp}.jpg`;
+  });
+}
+
+function loadSenamhiSatelliteImage() {
+  const candidates = getSenamhiSatelliteUrls();
+  const tryNext = (index) => {
+    if (index >= candidates.length) {
+      console.error("SENAMHI no publicó una imagen satelital reciente.");
+      return;
+    }
+    const image = new Image();
+    image.onload = () => {
+      senamhiSatelliteUrl = candidates[index];
+      renderSatelliteImage();
+    };
+    image.onerror = () => tryNext(index + 1);
+    image.src = candidates[index];
+  };
+  tryNext(0);
 }
 
 function getHourIndex(times, currentTime) {
@@ -326,9 +365,7 @@ function setSelectedLocation(location, regionId, id) {
   selectedLocation = location;
   selectedRegionId = regionId;
   selectedId = id;
-  satelliteZoom = SATELLITE_AREA_ZOOM[
-    document.querySelector("#satellite-area-filter")?.value || "south"
-  ] || 3.4;
+  satelliteZoom = getSatelliteArea().zoom;
   updateLocationLabels();
   loadWeather();
   loadSenamhiAlerts();
@@ -454,6 +491,7 @@ function setSatelliteProduct(productId) {
   }
   document.querySelector("#satellite-cira-link").href = CIRA_VIEWER_URL;
   if (product.loop) loadInfraredLoop();
+  if (product.senamhi) loadSenamhiSatelliteImage();
 }
 
 async function loadInfraredLoop() {
@@ -558,7 +596,7 @@ function renderSatelliteImage() {
   }
   ciraView.hidden = true;
   const bounds = image.getBoundingClientRect();
-  const aspectRatio = 1800 / 1080;
+  const aspectRatio = product.senamhi ? 1581 / 1296 : 1800 / 1080;
   const baseWidth = Math.max(bounds.width, bounds.height * aspectRatio);
   const imageWidth = baseWidth * satelliteZoom;
   const imageHeight = (imageWidth / aspectRatio);
@@ -572,28 +610,40 @@ function renderSatelliteImage() {
     );
     return { offset, marker: (fraction / 100) * imageSize - offset };
   };
-  const horizontal = calculateAxis(position.x, imageWidth, bounds.width);
-  const vertical = calculateAxis(position.y, imageHeight, bounds.height);
+  const area = getSatelliteArea();
+  const areaHorizontal = calculateAxis(area.center[0], imageWidth, bounds.width);
+  const areaVertical = calculateAxis(area.center[1], imageHeight, bounds.height);
+  const markerHorizontal = (position.x / 100) * imageWidth - areaHorizontal.offset;
+  const markerVertical = (position.y / 100) * imageHeight - areaVertical.offset;
   const isLoop = product.loop && satelliteFrameElements.length > 0;
   const resolution = satelliteZoom > 1 ? "3600x2160" : "1800x1080";
-  const imageUrl = `https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/NSA/${product.path}/${resolution}.jpg?t=${Date.now()}`;
+  const imageUrl = product.senamhi
+    ? senamhiSatelliteUrl
+    : `https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/NSA/${product.path}/${resolution}.jpg?t=${Date.now()}`;
+  if (!imageUrl) return;
   image.style.backgroundColor = "";
   image.style.backgroundImage = isLoop
     ? "linear-gradient(0deg, #0e19158a, transparent 40%)"
     : `linear-gradient(0deg, #0e19158a, transparent 40%), url("${imageUrl}")`;
   image.style.backgroundSize = `cover, ${imageWidth}px ${imageHeight}px`;
-  image.style.backgroundPosition = `center, ${-horizontal.offset}px ${-vertical.offset}px`;
+  image.style.backgroundPosition = `center, ${-areaHorizontal.offset}px ${-areaVertical.offset}px`;
   if (loopLayer) loopLayer.hidden = !isLoop;
   if (isLoop) {
     satelliteFrameElements.forEach((frame) => {
       frame.style.width = `${imageWidth}px`;
       frame.style.height = `${imageHeight}px`;
-      frame.style.left = `${-horizontal.offset}px`;
-      frame.style.top = `${-vertical.offset}px`;
+      frame.style.left = `${-areaHorizontal.offset}px`;
+      frame.style.top = `${-areaVertical.offset}px`;
     });
   }
-  marker.style.left = `${(horizontal.marker / bounds.width) * 100}%`;
-  marker.style.top = `${(vertical.marker / bounds.height) * 100}%`;
+  const markerVisible =
+    markerHorizontal >= 0 &&
+    markerHorizontal <= bounds.width &&
+    markerVertical >= 0 &&
+    markerVertical <= bounds.height;
+  marker.hidden = !markerVisible;
+  marker.style.left = `${(markerHorizontal / bounds.width) * 100}%`;
+  marker.style.top = `${(markerVertical / bounds.height) * 100}%`;
   image.setAttribute(
     "aria-label",
     `Imagen ${product.label} de GOES-19 sobre Sudamérica, centrada en ${selectedLocation.name}; zoom ${satelliteZoom.toFixed(1)}`,
@@ -925,7 +975,7 @@ document.querySelector("#satellite-filter").addEventListener("change", (event) =
 });
 
 document.querySelector("#satellite-area-filter").addEventListener("change", (event) => {
-  satelliteZoom = SATELLITE_AREA_ZOOM[event.currentTarget.value] || 2.2;
+  satelliteZoom = getSatelliteArea().zoom;
   renderSatelliteImage();
 });
 
@@ -992,6 +1042,7 @@ loadSenamhiAlerts();
 renderSatelliteImage();
 window.setInterval(loadWeather, UPDATE_INTERVAL);
 window.setInterval(loadSenamhiAlerts, UPDATE_INTERVAL);
+window.setInterval(loadSenamhiSatelliteImage, SENAMHI_SATELLITE_INTERVAL);
 window.setInterval(updateClock, 1000);
 window.setInterval(() => {
   if (selectedSatelliteProduct === "infrared") {
@@ -1001,3 +1052,4 @@ window.setInterval(() => {
   }
 }, UPDATE_INTERVAL);
 window.addEventListener("resize", renderSatelliteImage);
+loadSenamhiSatelliteImage();
