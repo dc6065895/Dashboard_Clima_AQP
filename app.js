@@ -211,14 +211,20 @@ function initializeWeatherMap() {
     maxZoom: 16,
     zoomControl: true,
   });
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+  const baseLayer = L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: "abcd",
-      maxZoom: 20,
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+      className: "weather-map-tiles",
     },
   ).addTo(weatherMap);
+  let tileFallbackUsed = false;
+  baseLayer.on("tileerror", () => {
+    if (tileFallbackUsed) return;
+    tileFallbackUsed = true;
+    baseLayer.setUrl("https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png");
+  });
 
   WEATHER_STATIONS.forEach((station) => {
     L.marker([station.lat, station.lng], {

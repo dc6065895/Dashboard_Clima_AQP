@@ -248,6 +248,7 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
 .gis-toggle { display: flex; align-items: center; gap: 7px; color: #a7bac5; font: 9px var(--mono); cursor: pointer; }
 .gis-toggle input { accent-color: #e58b39; }
 .weather-map { height: 430px; margin-top: 12px; overflow: hidden; border: 1px solid #344653; border-radius: 7px; background: #17242e; }
+.weather-map-tiles { filter: brightness(.68) saturate(.72) contrast(1.05); }
 .weather-map .leaflet-control-zoom a { color: #dce8ed; background: #17242e; border-color: #415462; }
 .weather-map .leaflet-control-attribution { color: #91a1ab; background: #111923d9; }
 .weather-map .leaflet-control-attribution a { color: #b6d1dd; }
