@@ -210,7 +210,7 @@ h2 { margin-top: 4px; color: #e9eee6; font: 650 17px/1.3 var(--display); letter-
 #radar-timestamp { font: 8px var(--mono); }
 .satellite-heading { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-bottom: 12px; }
 .satellite-heading > div:first-child { min-width: 0; }
-.satellite-heading .media-controls { width: 100%; justify-content: flex-end; }
+.satellite-heading .media-controls { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
 .satellite-badge { padding: 4px 6px; color: #c2d3da; background: #202d38; border: 1px solid #3a4a56; border-radius: 4px; font: 8px var(--mono); }
 .satellite-image { position: relative; height: 300px; overflow: hidden; background-color: #18232d; background-image: linear-gradient(0deg, #0e151dbb, transparent 40%), url("https://cdn.star.nesdis.noaa.gov/GOES19/ABI/SECTOR/NSA/GEOCOLOR/1800x1080.jpg"); background-position: center, 50% 50%; background-size: cover, 100% auto; border: 1px solid #34434f; border-radius: 7px; cursor: zoom-in; }
 .satellite-image::after { position: absolute; z-index: 1; inset: 0; background: linear-gradient(180deg, #10181677 0%, transparent 25%, transparent 67%, #10181680 100%); content: ""; pointer-events: none; }

@@ -169,14 +169,15 @@ let locationSearchRequestId = 0;
 let weatherRequestId = 0;
 let senamhiRequestId = 0;
 let selectedSatelliteProduct = "geocolor";
-let satelliteZoom = 2.5;
+let satelliteZoom = 3.4;
 let satelliteFrames = [];
 let satelliteFrameElements = [];
 let satelliteFrameIndex = -1;
 let satelliteLoopTimer;
 let nextUpdateAt = Date.now() + UPDATE_INTERVAL;
-// NOAA's fixed NSA JPEG has no pixel georeferencing; this is a visual sector anchor.
-const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 23, y: 75 };
+// Calibrated against the visible South America boundaries in NOAA's NSA sector.
+const SATELLITE_REFERENCE = { latitude: -16.379898, longitude: -71.557855, x: 20, y: 73 };
+const SATELLITE_AREA_ZOOM = { peru: 2.2, north: 2.8, center: 3.1, south: 3.4 };
 
 function weatherDescription(code) {
   return WEATHER_CODES[code] || ["Condición variable", "⛅"];
@@ -325,7 +326,9 @@ function setSelectedLocation(location, regionId, id) {
   selectedLocation = location;
   selectedRegionId = regionId;
   selectedId = id;
-  satelliteZoom = 2.5;
+  satelliteZoom = SATELLITE_AREA_ZOOM[
+    document.querySelector("#satellite-area-filter")?.value || "south"
+  ] || 3.4;
   updateLocationLabels();
   loadWeather();
   loadSenamhiAlerts();
@@ -432,8 +435,8 @@ function formatCoordinates([latitude, longitude]) {
 function getSatellitePosition(location = selectedLocation) {
   const [latitude, longitude] = location.coordinates;
   return {
-    x: SATELLITE_REFERENCE.x + (longitude - SATELLITE_REFERENCE.longitude) * 1.5,
-    y: SATELLITE_REFERENCE.y - (latitude - SATELLITE_REFERENCE.latitude) * 1.8,
+    x: SATELLITE_REFERENCE.x + (longitude - SATELLITE_REFERENCE.longitude) * 0.9,
+    y: SATELLITE_REFERENCE.y - (latitude - SATELLITE_REFERENCE.latitude) * 2.8,
   };
 }
 
@@ -919,6 +922,11 @@ document.querySelector("#refresh-button").addEventListener("click", () => {
 
 document.querySelector("#satellite-filter").addEventListener("change", (event) => {
   setSatelliteProduct(event.currentTarget.value);
+});
+
+document.querySelector("#satellite-area-filter").addEventListener("change", (event) => {
+  satelliteZoom = SATELLITE_AREA_ZOOM[event.currentTarget.value] || 2.2;
+  renderSatelliteImage();
 });
 
 document.querySelector("#satellite-zoom-in").addEventListener("click", () => {
