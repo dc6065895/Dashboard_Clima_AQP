@@ -298,7 +298,13 @@ function updateLocationLabels() {
     `${selectedLocation.subtitle} · ${elevationText}`,
   );
   setText(elements.mapName, selectedLocation.name.toLocaleUpperCase("es-PE"));
-  setText(elements.satelliteName, selectedLocation.name.toLocaleUpperCase("es-PE"));
+  setText(
+    elements.satelliteName,
+    [selectedLocation.name, selectedLocation.province]
+      .filter(Boolean)
+      .join(" · ")
+      .toLocaleUpperCase("es-PE"),
+  );
   setText(
     elements.satelliteCoordinates,
     formatCoordinates(selectedLocation.coordinates),
@@ -587,7 +593,7 @@ function renderSatelliteImage() {
   marker.style.top = `${(vertical.marker / bounds.height) * 100}%`;
   image.setAttribute(
     "aria-label",
-    `Imagen ${product.label} de GOES-19, sector Sudamérica norte; zoom ${satelliteZoom.toFixed(1)} por`,
+    `Imagen ${product.label} de GOES-19 sobre Sudamérica, centrada en ${selectedLocation.name}; zoom ${satelliteZoom.toFixed(1)}`,
   );
   setText(document.querySelector("#satellite-zoom-level"), `${satelliteZoom.toFixed(1)}×`);
   document.querySelector("#satellite-zoom-out").disabled = satelliteZoom <= 1;
