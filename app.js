@@ -158,6 +158,7 @@ const elements = {
   locationSearchStatus: document.querySelector("#location-search-status"),
   senamhiRegion: document.querySelector("#senamhi-region"),
   senamhiSourceLink: document.querySelector("#senamhi-source-link"),
+  weatherMapStatus: document.querySelector("#weather-map-status"),
 };
 
 let selectedId = "cerro-colorado";
@@ -183,6 +184,105 @@ const SATELLITE_AREA = {
   south: { zoom: 1.15, center: [43, 69] },
 };
 const SENAMHI_SATELLITE_INTERVAL = 10 * 60 * 1000;
+const WEATHER_STATIONS = [
+  { id: 1, nombre: "Yura", lat: -16.25, lng: -71.68, lluvia_mm: 0.0 },
+  { id: 2, nombre: "Cerro Colorado", lat: -16.3799, lng: -71.5579, lluvia_mm: 0.0 },
+  { id: 3, nombre: "Yanahuara", lat: -16.389, lng: -71.537, lluvia_mm: 0.0 },
+  { id: 4, nombre: "Cayma", lat: -16.35, lng: -71.548, lluvia_mm: 0.0 },
+];
+let weatherMap;
+let hazardLayer;
+
+function stationIcon(station) {
+  return L.divIcon({
+    className: "station-marker-wrapper",
+    html: `<span class="station-marker">${station.nombre} / ${Number(station.lluvia_mm).toFixed(1)} mm</span>`,
+    iconSize: null,
+    iconAnchor: [0, 0],
+  });
+}
+
+function initializeWeatherMap() {
+  if (!window.L || !document.querySelector("#weather-map")) return;
+  weatherMap = L.map("weather-map", {
+    center: [-16.409, -71.5374],
+    zoom: 9,
+    minZoom: 5,
+    maxZoom: 16,
+    zoomControl: true,
+  });
+  L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+    {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: "abcd",
+      maxZoom: 20,
+    },
+  ).addTo(weatherMap);
+
+  WEATHER_STATIONS.forEach((station) => {
+    L.marker([station.lat, station.lng], {
+      icon: stationIcon(station),
+      title: `${station.nombre}: ${station.lluvia_mm.toFixed(1)} mm`,
+    }).addTo(weatherMap);
+  });
+
+  fetch("distritos.json", { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`distritos.json respondió ${response.status}`);
+      return response.json();
+    })
+    .then((geojson) => {
+      L.geoJSON(geojson, {
+        style: {
+          color: "#ffffff",
+          weight: 0.8,
+          opacity: 0.7,
+          fillColor: "#547080",
+          fillOpacity: 0.08,
+        },
+        onEachFeature: (feature, layer) => {
+          const name = feature.properties?.distrito || feature.properties?.name;
+          if (name) layer.bindTooltip(name, { sticky: true });
+        },
+      }).addTo(weatherMap);
+      setText(
+        elements.weatherMapStatus,
+        geojson.features?.length
+          ? "Distritos y estaciones meteorológicas cargados."
+          : "Estaciones cargadas; distritos.json aún no contiene geometrías.",
+      );
+    })
+    .catch((error) => {
+      console.error("No fue posible cargar los límites distritales:", error);
+      setText(elements.weatherMapStatus, "Estaciones cargadas; agrega distritos.json para mostrar los límites.");
+    });
+
+  document.querySelector("#hazard-layer-toggle")?.addEventListener("change", (event) => {
+    if (!hazardLayer) {
+      hazardLayer = L.geoJSON(null, {
+        style: (feature) => ({
+          color: "#ffffff",
+          weight: 0.8,
+          fillColor: {
+            moderada: "#f5c542",
+            fuerte: "#f27b27",
+            extrema: "#e23b3b",
+          }[feature.properties?.nivel] || "#f5c542",
+          fillOpacity: 0.35,
+        }),
+      }).addTo(weatherMap);
+    }
+    if (event.currentTarget.checked) {
+      hazardLayer.addData(window.NIVELES_PELIGRO_GEOJSON || {
+        type: "FeatureCollection",
+        features: [],
+      });
+    } else {
+      hazardLayer.clearLayers();
+    }
+  });
+}
 
 function weatherDescription(code) {
   return WEATHER_CODES[code] || ["Condición variable", "⛅"];
@@ -1031,3 +1131,4 @@ window.setInterval(() => {
 }, UPDATE_INTERVAL);
 window.addEventListener("resize", renderSatelliteImage);
 loadSenamhiSatelliteImage();
+initializeWeatherMap();

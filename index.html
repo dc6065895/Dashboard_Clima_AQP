@@ -47,6 +47,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M20.2 15a9 9 0 0 0-11.2-11M3.8 9a9 9 0 0 0 11.2 11M8 8l-4.5-.5L4 12m12 4 4.5.5L20 12"/></svg>
             Satélite GOES
           </a>
+          <a class="nav-item" href="#observatorio">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M8 16V9m4 7V6m4 10v-4"/></svg>
+            Observatorio GIS
+          </a>
           <a class="nav-item" href="#pronostico">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-9"/><path d="M15 6h6v6"/></svg>
             Pronóstico
@@ -201,6 +205,26 @@
             <div class="hour-card"><span class="hour-time">+3 H</span><span class="hour-icon">☀</span><strong>--°</strong><div class="hour-rain"><i></i> --%</div></div>
             <div class="hour-card"><span class="hour-time">+6 H</span><span class="hour-icon">☀</span><strong>--°</strong><div class="hour-rain"><i></i> --%</div></div>
           </div>
+        </section>
+
+        <section class="panel gis-panel" id="observatorio">
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow"><span class="eyebrow-line"></span> OBSERVATORIO GIS</div>
+              <h2>Mapa meteorológico <span>interactivo</span></h2>
+            </div>
+            <label class="gis-toggle">
+              <input id="hazard-layer-toggle" type="checkbox" />
+              <span>Nivel de peligro</span>
+            </label>
+          </div>
+          <div id="weather-map" class="weather-map" role="application" aria-label="Mapa meteorológico de distritos y estaciones"></div>
+          <div class="gis-legend" aria-label="Leyenda de nivel de peligro">
+            <span><i class="hazard-moderate"></i>Moderada</span>
+            <span><i class="hazard-strong"></i>Fuerte</span>
+            <span><i class="hazard-extreme"></i>Extrema</span>
+          </div>
+          <p id="weather-map-status" class="gis-status" aria-live="polite">Cargando distritos y estaciones…</p>
         </section>
 
         <section class="lower-grid">
